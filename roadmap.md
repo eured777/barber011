@@ -1,0 +1,15 @@
+# Roadmap
+- [x] Design escuro branco/dourado no estilo EUREDCOMP
+- [x] Tela inicial com botões-foto (Agendar, Meus agendamentos, Serviços)
+- [x] Login/cadastro de clientes (Lovable Cloud)
+- [x] Tela de agendamento salvando online, sem horário duplicado
+- [x] Tela de meus agendamentos
+- [x] Painel do barbeiro (login de administrador) para gerir agendamentos
+- [x] Barra inferior fixa, largura total, conteúdo não passa por cima nem por baixo
+- [x] Conta do barbeiro (admin) e conta de teste criadas
+- [x] Nome RED DO CORTE
+- [x] Menu dos 3 riscos: Configurações (tema preto/branco), Sobre, Fale conosco
+- [ ] Sobre: história real da barbearia (aguardando texto)
+- [ ] Fale conosco: endereço e Instagram reais (aguardando); WhatsApp (91) 99926-6351
+- [x] Agendar: calendário mensal para o dia, horários em lista horizontal
+- [x] Seus dados: apelido opcional, WhatsApp obrigatório (também no cadastro)

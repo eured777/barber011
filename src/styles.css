@@ -1,0 +1,283 @@
+/*
+ * Tailwind v4 entry: config lives here, with no tailwind.config.js or PostCSS plugin.
+ * - Keep every @import in this top block, above @theme and the rest of the file. Install an
+ *   npm package before @importing its CSS. Never @import a remote URL (web fonts, CDN CSS): the
+ *   build resolves @import from the filesystem. Load those with a <link> in the head() of
+ *   src/routes/__root.tsx and name the family in a --font-* token in @theme inline below.
+ */
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design system definition.
+ *
+ * The design lives in this file: oklch color tokens on the shadcn variables
+ * (--background, --foreground, --primary, --secondary, --muted, --accent, ...) plus
+ * new tokens as needed, font tokens, and custom styles and animations.
+ *
+ * The @theme inline block maps CSS custom properties to Tailwind utility
+ * classes (e.g. --color-primary -> bg-primary, text-primary).
+ *
+ * The :root and .dark blocks define the actual color values using oklch.
+ * All colors MUST use oklch format.
+ *
+ * To add a new semantic color:
+ * 1. Add the variable to :root (light value) and .dark (dark value)
+ * 2. Register it in @theme inline as --color-<name>: var(--<name>)
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-gold-deep: var(--gold-deep);
+  --color-glass: var(--glass);
+  --color-glass-border: var(--glass-border);
+  --color-on-photo: var(--on-photo);
+  --color-photo-accent: var(--photo-accent);
+  --color-swatch-dark: var(--swatch-dark);
+  --color-swatch-light: var(--swatch-light);
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bebas Neue", "Manrope", ui-sans-serif, sans-serif;
+  --shadow-card: var(--shadow-card);
+  --shadow-gold: var(--shadow-gold);
+  --shadow-bubble: var(--shadow-bubble);
+  --shadow-bar: var(--shadow-bar);
+}
+
+/* RED DO CORTE: tema escuro, detalhes em branco e dourado */
+:root {
+  --radius: 1rem;
+  --background: oklch(0.13 0.004 70);
+  --foreground: oklch(0.97 0.004 85);
+  --card: oklch(0.18 0.005 70);
+  --card-foreground: oklch(0.97 0.004 85);
+  --popover: oklch(0.18 0.005 70);
+  --popover-foreground: oklch(0.97 0.004 85);
+  --primary: oklch(0.8 0.12 83);
+  --primary-foreground: oklch(0.15 0.01 70);
+  --secondary: oklch(0.22 0.006 70);
+  --secondary-foreground: oklch(0.95 0.004 85);
+  --muted: oklch(0.22 0.006 70);
+  --muted-foreground: oklch(0.7 0.01 80);
+  --accent: oklch(0.27 0.02 80);
+  --accent-foreground: oklch(0.97 0.004 85);
+  --destructive: oklch(0.65 0.2 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --success: oklch(0.72 0.13 155);
+  --success-foreground: oklch(0.15 0.01 70);
+  --border: oklch(0.8 0.12 83 / 16%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.8 0.12 83);
+  --chart-1: oklch(0.8 0.12 83);
+  --chart-2: oklch(0.72 0.13 155);
+  --chart-3: oklch(0.65 0.2 25);
+  --chart-4: oklch(0.88 0.08 90);
+  --chart-5: oklch(0.6 0.1 70);
+  --sidebar: oklch(0.16 0.005 70);
+  --sidebar-foreground: oklch(0.97 0.004 85);
+  --sidebar-primary: oklch(0.8 0.12 83);
+  --sidebar-primary-foreground: oklch(0.15 0.01 70);
+  --sidebar-accent: oklch(0.22 0.006 70);
+  --sidebar-accent-foreground: oklch(0.97 0.004 85);
+  --sidebar-border: oklch(0.8 0.12 83 / 16%);
+  --sidebar-ring: oklch(0.8 0.12 83);
+
+  --gold: oklch(0.8 0.12 83);
+  --gold-light: oklch(0.9 0.09 92);
+  --gold-deep: oklch(0.62 0.11 70);
+  --on-photo: oklch(0.99 0.003 85);
+  --glass: oklch(0.14 0.004 70 / 78%);
+  --glass-border: oklch(0.8 0.12 83 / 22%);
+
+  --gradient-gold: linear-gradient(100deg, var(--gold-deep), var(--gold) 45%, var(--gold-light));
+  --gradient-photo: linear-gradient(90deg, oklch(0 0 0 / 92%) 0%, oklch(0 0 0 / 70%) 40%, oklch(0 0 0 / 10%) 100%);
+  --gradient-photo-up: linear-gradient(0deg, oklch(0 0 0 / 95%) 0%, oklch(0 0 0 / 55%) 45%, oklch(0 0 0 / 15%) 100%);
+  --gradient-page: radial-gradient(120% 60% at 50% -10%, oklch(0.8 0.12 83 / 10%), transparent 60%);
+
+  --shadow-card: 0 24px 48px -24px oklch(0 0 0 / 80%);
+  --shadow-gold: 0 10px 28px -12px oklch(0.8 0.12 83 / 55%);
+  --shadow-bubble: 0 14px 34px -12px oklch(0 0 0 / 85%), 0 0 0 1px oklch(0.8 0.12 83 / 14%);
+  --shadow-bar: 0 -16px 34px -18px oklch(0 0 0 / 90%);
+
+  /* Fixos: sempre por cima das fotos com gradiente preto, nos dois temas */
+  --photo-accent: oklch(0.8 0.12 83);
+  --photo-chip: oklch(0 0 0 / 40%);
+  --swatch-dark: oklch(0.13 0.004 70);
+  --swatch-light: oklch(0.975 0.006 85);
+  --gradient-gold-text: var(--gradient-gold);
+}
+
+/* Tema branco (escolhido em Configurações): mesmos detalhes dourados sobre fundo claro */
+html.light {
+  --background: oklch(0.975 0.006 85);
+  --foreground: oklch(0.19 0.008 70);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.19 0.008 70);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.19 0.008 70);
+  --primary: oklch(0.58 0.12 72);
+  --primary-foreground: oklch(0.15 0.01 70);
+  --secondary: oklch(0.94 0.008 85);
+  --secondary-foreground: oklch(0.22 0.008 70);
+  --muted: oklch(0.94 0.008 85);
+  --muted-foreground: oklch(0.46 0.015 75);
+  --accent: oklch(0.93 0.035 85);
+  --accent-foreground: oklch(0.19 0.008 70);
+  --destructive: oklch(0.55 0.2 25);
+  --success: oklch(0.52 0.13 155);
+  --success-foreground: oklch(0.99 0 0);
+  --border: oklch(0.58 0.12 72 / 22%);
+  --input: oklch(0.2 0.01 70 / 12%);
+  --ring: oklch(0.58 0.12 72);
+  --sidebar: oklch(0.99 0.004 85);
+  --sidebar-foreground: oklch(0.19 0.008 70);
+  --sidebar-primary: oklch(0.58 0.12 72);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.94 0.008 85);
+  --sidebar-accent-foreground: oklch(0.19 0.008 70);
+  --sidebar-border: oklch(0.58 0.12 72 / 22%);
+  --sidebar-ring: oklch(0.58 0.12 72);
+
+  --glass: oklch(0.99 0.004 85 / 86%);
+  --glass-border: oklch(0.58 0.12 72 / 30%);
+  --gradient-gold-text: linear-gradient(100deg, oklch(0.45 0.09 65), oklch(0.56 0.12 74) 50%, oklch(0.62 0.12 82));
+  --gradient-page: radial-gradient(120% 60% at 50% -10%, oklch(0.8 0.12 83 / 18%), transparent 60%);
+
+  --shadow-card: 0 22px 44px -26px oklch(0.3 0.03 70 / 40%);
+  --shadow-gold: 0 10px 26px -12px oklch(0.7 0.13 80 / 60%);
+  --shadow-bubble: 0 14px 34px -14px oklch(0.3 0.03 70 / 30%), 0 0 0 1px oklch(0.58 0.12 72 / 18%);
+  --shadow-bar: 0 -12px 30px -18px oklch(0.3 0.03 70 / 35%);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  html.light {
+    color-scheme: light;
+  }
+
+  body {
+    background-color: var(--color-background);
+    background-image: var(--gradient-page);
+    background-attachment: fixed;
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@utility glass {
+  background-color: var(--glass);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+}
+
+@utility bg-gradient-gold {
+  background-image: var(--gradient-gold);
+}
+
+@utility text-gradient-gold {
+  background-image: var(--gradient-gold-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility bg-photo-fade {
+  background-image: var(--gradient-photo);
+}
+
+@utility bg-photo-fade-up {
+  background-image: var(--gradient-photo-up);
+}
+
+@utility text-photo {
+  color: var(--on-photo);
+  text-shadow: 0 1px 12px oklch(0 0 0 / 70%);
+}
+
+@utility bg-photo-chip {
+  background-color: var(--photo-chip);
+}
+
+@utility pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+@keyframes bubble-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@utility animate-bubble-pop {
+  animation: bubble-pop 380ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes rise-in {
+  from { transform: translateY(14px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@utility animate-rise {
+  animation: rise-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Botão oficial do Google (tema escuro exigido pela marca Google) */
+@utility btn-google {
+  background-color: #131314;
+  border-color: #8e918f;
+  color: #e3e3e3;
+}
