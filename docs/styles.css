@@ -1,43 +1,84 @@
-/* RED DO CORTE — versão estática. Cores copiadas dos tokens oklch do projeto Lovable. */
+/*
+ * RED DO CORTE — estilo (HTML/CSS/JS puros).
+ * Cores, fontes, raios e sombras copiados dos tokens do projeto Lovable (tema escuro).
+ * Todas as cores são oklch, como no projeto original.
+ */
 
+/* ---------- tokens ---------- */
 :root {
+  --radius: 1rem;
   --background: oklch(0.13 0.004 70);
   --foreground: oklch(0.97 0.004 85);
   --card: oklch(0.18 0.005 70);
+  --card-foreground: oklch(0.97 0.004 85);
   --primary: oklch(0.8 0.12 83);
   --primary-foreground: oklch(0.15 0.01 70);
+  --secondary: oklch(0.22 0.006 70);
+  --secondary-foreground: oklch(0.95 0.004 85);
+  --muted: oklch(0.22 0.006 70);
   --muted-foreground: oklch(0.7 0.01 80);
   --accent: oklch(0.27 0.02 80);
   --destructive: oklch(0.65 0.2 25);
   --success: oklch(0.72 0.13 155);
   --border: oklch(0.8 0.12 83 / 16%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.8 0.12 83);
+
+  --gold: oklch(0.8 0.12 83);
+  --gold-light: oklch(0.9 0.09 92);
+  --gold-deep: oklch(0.62 0.11 70);
+  --on-photo: oklch(0.99 0.003 85);
+  --photo-accent: oklch(0.8 0.12 83);
+  --photo-chip: oklch(0 0 0 / 40%);
   --glass: oklch(0.14 0.004 70 / 78%);
   --glass-border: oklch(0.8 0.12 83 / 22%);
-  --gradient-gold: linear-gradient(100deg, oklch(0.62 0.11 70), oklch(0.8 0.12 83) 45%, oklch(0.9 0.09 92));
+
+  --gradient-gold: linear-gradient(100deg, var(--gold-deep), var(--gold) 45%, var(--gold-light));
+  --gradient-photo: linear-gradient(90deg, oklch(0 0 0 / 92%) 0%, oklch(0 0 0 / 70%) 40%, oklch(0 0 0 / 10%) 100%);
+  --gradient-photo-up: linear-gradient(0deg, oklch(0 0 0 / 95%) 0%, oklch(0 0 0 / 55%) 45%, oklch(0 0 0 / 15%) 100%);
+  --gradient-page: radial-gradient(120% 60% at 50% -10%, oklch(0.8 0.12 83 / 10%), transparent 60%);
+  --gradient-card: linear-gradient(100deg, oklch(0.2 0.01 70), oklch(0.14 0.005 70));
+  --gradient-head: linear-gradient(100deg, oklch(0.25 0.03 70), oklch(0.13 0.004 70));
+
   --shadow-card: 0 24px 48px -24px oklch(0 0 0 / 80%);
   --shadow-gold: 0 10px 28px -12px oklch(0.8 0.12 83 / 55%);
-  --radius: 1rem;
+  --shadow-bubble: 0 14px 34px -12px oklch(0 0 0 / 85%), 0 0 0 1px oklch(0.8 0.12 83 / 14%);
+  --shadow-bar: 0 -16px 34px -18px oklch(0 0 0 / 90%);
+
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bebas Neue", "Manrope", ui-sans-serif, sans-serif;
 }
 
 * { box-sizing: border-box; }
-
 html { color-scheme: dark; }
 
 body {
   margin: 0;
+  min-height: 100vh;
   background-color: var(--background);
-  background-image: radial-gradient(120% 60% at 50% -10%, oklch(0.8 0.12 83 / 10%), transparent 60%);
+  background-image: var(--gradient-page);
   background-attachment: fixed;
   color: var(--foreground);
-  font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
 
 a { color: inherit; text-decoration: none; }
 button, input { font: inherit; }
+[hidden] { display: none !important; }
 
-/* ---------- topo ---------- */
+/* ---------- utilitários de texto ---------- */
+.display { font-family: var(--font-display); font-weight: 400; letter-spacing: 0.04em; line-height: 1; margin: 0; }
+.text-gold {
+  background: var(--gradient-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.muted { color: var(--muted-foreground); }
+
+/* ---------- topo (vidro, como o TopBar do Lovable) ---------- */
 .topbar {
   position: sticky;
   top: 0;
@@ -46,31 +87,105 @@ button, input { font: inherit; }
   align-items: center;
   justify-content: space-between;
   max-width: 28rem;
+  height: 3.5rem;
   margin: 0 auto;
-  padding: 0.9rem 1.25rem;
+  padding: 0 0.75rem;
   background: var(--glass);
   backdrop-filter: blur(18px) saturate(160%);
   -webkit-backdrop-filter: blur(18px) saturate(160%);
   border-bottom: 1px solid var(--glass-border);
 }
 .brand {
-  font-family: "Bebas Neue", "Manrope", sans-serif;
-  font-size: 1.6rem;
-  letter-spacing: 0.12em;
-  background: var(--gradient-gold);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  white-space: nowrap;
 }
+.brand { background: var(--gradient-gold); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+.icon-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+  transition: background 150ms, transform 150ms;
+}
+.icon-btn:hover { background: var(--secondary); }
+.icon-btn:active { transform: scale(0.9); }
+.icon-btn svg { width: 1.5rem; height: 1.5rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+
+.menu-wrap { position: relative; }
+.menu-panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  width: 15rem;
+  padding: 0.4rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow: var(--shadow-bubble);
+  display: grid;
+  gap: 0.1rem;
+  animation: rise 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.menu-panel a {
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.menu-panel a:hover { background: var(--accent); }
+.menu-label {
+  margin: 0.4rem 0.8rem 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
 .pill {
-  padding: 0.4rem 0.9rem;
-  border: 1px solid var(--primary);
+  padding: 0.4rem 0.85rem;
+  border: 1px solid oklch(0.8 0.12 83 / 60%);
   border-radius: 999px;
   color: var(--primary);
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  transition: background 150ms;
+}
+.pill:hover { background: oklch(0.8 0.12 83 / 10%); }
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  background: var(--gradient-gold);
+  padding: 2px;
+  color: var(--primary);
+  font-weight: 800;
+  font-size: 0.75rem;
+}
+.avatar span {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--card);
 }
 
 /* ---------- layout ---------- */
@@ -78,44 +193,89 @@ button, input { font: inherit; }
   max-width: 28rem;
   margin: 0 auto;
   padding: 1.25rem 1.25rem 8.5rem;
-  min-height: 100vh;
+  min-height: calc(100vh - 3.5rem);
 }
-.page-title {
-  font-family: "Bebas Neue", sans-serif;
-  font-size: 2.6rem;
-  line-height: 1;
-  letter-spacing: 0.04em;
-  margin: 0;
-}
-.subtitle { color: var(--muted-foreground); font-size: 0.9rem; margin: 0.35rem 0 0; }
 .section-title {
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--primary);
   margin: 1.75rem 0 0.75rem;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  letter-spacing: 0.06em;
+  font-weight: 400;
+  line-height: 1;
 }
-.muted { color: var(--muted-foreground); font-size: 0.9rem; }
+.section-title .sub {
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  letter-spacing: 0;
+  color: var(--foreground);
+  margin-left: 0.4rem;
+  text-transform: none;
+}
+
+/* ---------- capa com foto (PageHeader / hero do Lovable) ---------- */
+.photo-head {
+  position: relative;
+  height: 10rem;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  border-radius: 2rem;
+  box-shadow: var(--shadow-card);
+  background: var(--gradient-head);
+  animation: rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.photo-head .photo-bg { position: absolute; inset: 0; background-size: cover; background-position: right center; }
+.photo-head::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-photo);
+}
+.photo-head .content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  padding: 1.25rem;
+}
+.photo-head h1 { font-family: var(--font-display); font-weight: 400; font-size: 2.5rem; line-height: 1; letter-spacing: 0.04em; margin: 0; color: var(--on-photo); text-shadow: 0 1px 12px oklch(0 0 0 / 70%); }
+.photo-head p { margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--on-photo); opacity: 0.8; }
+
+.back-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: fit-content;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: var(--photo-chip);
+  color: var(--on-photo);
+  font-size: 0.8rem;
+  font-weight: 700;
+  backdrop-filter: blur(6px);
+}
+.back-chip:active { transform: scale(0.95); }
 
 /* ---------- hero da home ---------- */
 .hero {
   position: relative;
   height: 14rem;
-  border: 1px solid var(--glass-border);
-  border-radius: 1.5rem;
   overflow: hidden;
+  border-block: 1px solid var(--glass-border);
+  border-radius: 1.5rem;
   box-shadow: var(--shadow-card);
   background:
-    linear-gradient(0deg, oklch(0 0 0 / 95%) 0%, oklch(0 0 0 / 55%) 45%, oklch(0 0 0 / 15%) 100%),
     radial-gradient(80% 90% at 80% 20%, oklch(0.8 0.12 83 / 35%), transparent 60%),
     linear-gradient(135deg, oklch(0.25 0.03 70), oklch(0.13 0.004 70));
   animation: rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.hero-text { position: absolute; inset: auto 1.25rem 1.25rem; }
+.hero .photo-bg { position: absolute; inset: 0; background-size: cover; background-position: center; }
+.hero::before { content: ""; position: absolute; inset: 0; background: var(--gradient-photo-up); }
+.hero-text { position: absolute; left: 1.25rem; right: 1.25rem; bottom: 1.25rem; }
 .hero-kicker {
   margin: 0;
-  color: var(--primary);
+  color: var(--photo-accent);
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.3em;
@@ -123,37 +283,41 @@ button, input { font: inherit; }
 }
 .hero-title {
   margin: 0.25rem 0 0;
-  font-family: "Bebas Neue", sans-serif;
-  font-size: 3.2rem;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 2.9rem;
   line-height: 1;
   letter-spacing: 0.04em;
+  color: var(--on-photo);
+  text-shadow: 0 1px 12px oklch(0 0 0 / 70%);
 }
-.hero-meta { margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; font-size: 0.8rem; opacity: 0.85; }
+.hero-meta { margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; font-size: 0.8rem; color: var(--on-photo); opacity: 0.85; }
 
 .home-heading { text-align: center; margin: 1.75rem 0 0; }
-.home-heading h2 { font-family: "Bebas Neue", sans-serif; font-size: 2.4rem; letter-spacing: 0.04em; margin: 0; font-weight: 400; }
-.home-heading .gold-rule { display: block; width: 4rem; height: 1px; margin: 1rem auto 0; background: var(--primary); }
+.home-heading h2 { font-family: var(--font-display); font-weight: 400; font-size: 2.5rem; letter-spacing: 0.04em; margin: 0; line-height: 1; }
+.home-heading .subtitle { margin: 0.35rem 0 0; color: var(--muted-foreground); font-size: 0.9rem; }
+.gold-rule { display: block; width: 4rem; height: 1px; margin: 1rem auto 0; background: var(--gradient-gold); }
 
-/* ---------- cards de atalho (estilo PhotoCard, sem foto) ---------- */
+/* ---------- cards-foto (PhotoCard do Lovable, sem foto quando não há imagem) ---------- */
 .menu-cards { display: grid; gap: 0.75rem; margin-top: 1.5rem; }
-.menu-card {
+.photo-card {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  height: 7.5rem;
-  padding: 0 1.5rem;
+  display: block;
+  height: 8rem;
+  overflow: hidden;
   border: 1px solid var(--glass-border);
   border-radius: 2rem 0.5rem 2rem 0.5rem;
-  background: linear-gradient(100deg, oklch(0.2 0.01 70), oklch(0.14 0.005 70));
   box-shadow: var(--shadow-card);
-  overflow: hidden;
+  background: var(--gradient-card);
   transition: transform 150ms;
   animation: rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.menu-card.mirrored { border-radius: 0.5rem 2rem 0.5rem 2rem; }
-.menu-card::before {
+.photo-card.mirrored { border-radius: 0.5rem 2rem 0.5rem 2rem; }
+.photo-card:active { transform: scale(0.98); }
+.photo-card .photo-bg { position: absolute; inset: 0; background-size: cover; background-position: right center; transition: transform 700ms; }
+.photo-card:hover .photo-bg { transform: scale(1.05); }
+.photo-card::before { content: ""; position: absolute; inset: 0; background: var(--gradient-photo); }
+.photo-card::after {
   content: "";
   position: absolute;
   left: 0;
@@ -163,38 +327,39 @@ button, input { font: inherit; }
   border-radius: 0 4px 4px 0;
   background: var(--gradient-gold);
 }
-.menu-card:active { transform: scale(0.98); }
-.menu-card strong { display: block; font-family: "Bebas Neue", sans-serif; font-weight: 400; font-size: 1.9rem; letter-spacing: 0.03em; line-height: 1; }
-.menu-card span.desc { display: block; margin-top: 0.4rem; font-size: 0.85rem; color: var(--muted-foreground); }
+.photo-card .content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  height: 100%;
+  padding: 0 1.5rem;
+}
+.photo-card strong {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.9rem;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  color: var(--on-photo);
+  text-shadow: 0 1px 12px oklch(0 0 0 / 70%);
+}
+.photo-card .desc { display: block; margin-top: 0.4rem; font-size: 0.85rem; color: var(--on-photo); opacity: 0.8; }
 .arrow-circle {
+  display: grid;
+  place-items: center;
   flex-shrink: 0;
   width: 2.5rem;
   height: 2.5rem;
-  border-radius: 50%;
-  border: 1px solid var(--primary);
-  color: var(--primary);
-  display: grid;
-  place-items: center;
-  font-size: 1.2rem;
-}
-
-/* ---------- cabeçalho de página ---------- */
-.page-head {
-  position: relative;
-  padding: 1.25rem 1.25rem 1.25rem;
-  border: 1px solid var(--glass-border);
-  border-radius: 1.5rem;
-  background: linear-gradient(100deg, oklch(0.25 0.03 70), oklch(0.13 0.004 70));
-  box-shadow: var(--shadow-card);
-}
-.back {
-  display: inline-block;
-  margin-bottom: 0.9rem;
-  padding: 0.3rem 0.75rem;
-  border: 1px solid var(--glass-border);
   border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 700;
+  border: 1px solid oklch(0.8 0.12 83 / 60%);
+  background: var(--photo-chip);
+  color: var(--photo-accent);
+  font-size: 1.3rem;
+  backdrop-filter: blur(6px);
 }
 
 /* ---------- cards e listas ---------- */
@@ -205,22 +370,14 @@ button, input { font: inherit; }
   padding: 1.25rem;
   box-shadow: var(--shadow-card);
 }
-.card + .card { margin-top: 0.75rem; }
 .list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.75rem; }
 .service-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
-.service-row h3 { margin: 0; font-family: "Bebas Neue", sans-serif; font-weight: 400; font-size: 1.7rem; letter-spacing: 0.03em; }
-.service-row p { margin: 0.25rem 0 0; color: var(--muted-foreground); font-size: 0.875rem; }
-.price {
-  font-family: "Bebas Neue", sans-serif;
-  font-size: 1.9rem;
-  background: var(--gradient-gold);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  white-space: nowrap;
-}
+.service-row h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 1.7rem; letter-spacing: 0.03em; line-height: 1; }
+.service-row p { margin: 0.3rem 0 0; color: var(--muted-foreground); font-size: 0.875rem; }
+.price { font-family: var(--font-display); font-size: 1.9rem; line-height: 1; white-space: nowrap; }
+.price, .info-gold { background: var(--gradient-gold); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
-/* ---------- chips (serviço, barbeiro, dia, horário) ---------- */
+/* ---------- chips (serviço, barbeiro, dia, horário — ChipClass do Lovable) ---------- */
 .chips { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
 .chip {
   padding: 0.75rem;
@@ -230,76 +387,105 @@ button, input { font: inherit; }
   border: 1px solid var(--border);
   border-radius: 1rem;
   cursor: pointer;
+  transition: border-color 150ms, transform 150ms;
 }
+.chip:hover { border-color: oklch(0.8 0.12 83 / 40%); }
+.chip:active { transform: scale(0.97); }
 .chip small { display: block; margin-top: 0.2rem; opacity: 0.75; font-size: 0.75rem; }
-.chip.on { background: var(--gradient-gold); color: var(--primary-foreground); border-color: transparent; box-shadow: var(--shadow-gold); font-weight: 700; }
+.chip.on {
+  background: oklch(0.8 0.12 83 / 15%);
+  color: var(--primary);
+  border-color: var(--primary);
+  box-shadow: var(--shadow-gold);
+  font-weight: 700;
+}
 .chip-row { display: flex; gap: 0.5rem; }
-.chip-row .chip { flex: 1; text-align: center; font-weight: 700; }
+.chip-row .chip { flex: 1; text-align: center; font-weight: 700; padding: 0.9rem 0.5rem; }
 
 .scroller { display: flex; gap: 0.5rem; overflow-x: auto; padding: 0.25rem 0 0.5rem; scrollbar-width: none; }
 .scroller::-webkit-scrollbar { display: none; }
 .day-chip { flex: 0 0 4.2rem; padding: 0.6rem 0; text-align: center; }
 .day-chip .wd { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.8; }
-.day-chip .dn { font-family: "Bebas Neue", sans-serif; font-size: 1.8rem; line-height: 1; margin-top: 0.15rem; }
+.day-chip .dn { font-family: var(--font-display); font-size: 1.8rem; line-height: 1; margin-top: 0.15rem; }
 .day-chip .mo { font-size: 0.7rem; opacity: 0.75; }
-.time-chip { flex: 0 0 4.5rem; padding: 0.7rem 0; text-align: center; font-family: "Bebas Neue", sans-serif; font-size: 1.6rem; }
+.time-chip { flex: 0 0 4.5rem; padding: 0.7rem 0; text-align: center; font-family: var(--font-display); font-size: 1.6rem; }
 
 .empty {
   padding: 1.5rem;
   text-align: center;
   color: var(--muted-foreground);
   border: 1px dashed var(--border);
-  border-radius: 1.25rem;
+  border-radius: 1.5rem;
+  background: var(--card);
   font-size: 0.9rem;
 }
 
-/* ---------- formulário ---------- */
+/* ---------- formulário (fieldClass / goldButtonClass do Lovable) ---------- */
 .field {
-  width: 100%;
-  padding: 0.85rem 1rem;
-  background: transparent;
-  color: var(--foreground);
-  border: 1px solid var(--border);
-  border-radius: 1rem;
-  outline: none;
-}
-.field:focus { border-color: var(--primary); box-shadow: 0 0 0 2px oklch(0.8 0.12 83 / 25%); }
-.field + .field { margin-top: 0.75rem; }
-.hint { margin: 0.35rem 0.5rem 0; font-size: 0.75rem; color: var(--muted-foreground); }
-.field[aria-invalid="true"] { border-color: var(--destructive); }
-
-.btn-gold {
   display: block;
   width: 100%;
+  height: 3rem;
+  padding: 0 1rem;
+  background: var(--secondary);
+  color: var(--foreground);
+  border: 1px solid var(--input);
+  border-radius: 1rem;
+  outline: none;
+  font-size: 1rem;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+.field + .field { margin-top: 0.75rem; }
+.field::placeholder { color: var(--muted-foreground); }
+.field:focus { border-color: var(--primary); box-shadow: 0 0 0 3px oklch(0.8 0.12 83 / 25%); }
+.field[aria-invalid="true"] { border-color: var(--destructive); }
+.hint { margin: 0.35rem 0.5rem 0; font-size: 0.75rem; color: var(--muted-foreground); }
+
+.btn-gold {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  height: 3rem;
   margin-top: 1.5rem;
-  padding: 1rem;
   border: 0;
-  border-radius: 999px;
+  border-radius: 1rem;
   background: var(--gradient-gold);
   color: var(--primary-foreground);
   font-weight: 800;
-  letter-spacing: 0.04em;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   box-shadow: var(--shadow-gold);
   cursor: pointer;
   text-align: center;
+  text-decoration: none;
+  transition: transform 150ms;
 }
-.btn-gold:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+.btn-gold:active { transform: scale(0.98); }
+.btn-gold:disabled { background: var(--muted); color: var(--muted-foreground); box-shadow: none; cursor: not-allowed; }
+
 .btn-soft {
+  display: inline-flex;
+  align-items: center;
   margin-top: 0.9rem;
-  padding: 0.6rem 1rem;
-  border: 1px solid var(--destructive);
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: transparent;
-  color: var(--destructive);
-  font-weight: 700;
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  font-weight: 600;
   font-size: 0.85rem;
   cursor: pointer;
+  transition: border-color 150ms, color 150ms;
 }
+.btn-soft:hover { border-color: oklch(0.8 0.12 83 / 50%); color: var(--primary); }
+.btn-soft.danger:hover { border-color: oklch(0.65 0.2 25 / 60%); color: var(--destructive); }
 
 /* ---------- agendamentos ---------- */
 .booking { border-color: oklch(0.8 0.12 83 / 40%); }
 .booking .when { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--primary); }
-.booking .time { font-family: "Bebas Neue", sans-serif; font-size: 2.6rem; line-height: 1; margin: 0.35rem 0 0; }
+.booking .time { font-family: var(--font-display); font-size: 2.6rem; line-height: 1; margin: 0.35rem 0 0; }
 .booking .info { margin: 0.75rem 0 0; font-size: 0.9rem; }
 .badge {
   display: inline-block;
@@ -314,32 +500,45 @@ button, input { font: inherit; }
 .badge.ok { color: var(--success); }
 .badge.off { color: var(--muted-foreground); }
 
-/* ---------- barra de navegação inferior ---------- */
+/* ---------- barra inferior em bolha (BubbleNav do Lovable) ---------- */
 .bottom-nav {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 40;
-  display: flex;
-  justify-content: space-around;
-  max-width: 28rem;
-  margin: 0 auto;
-  padding: 0.6rem 1rem max(0.6rem, env(safe-area-inset-bottom));
   background: var(--background);
   border-top: 1px solid var(--glass-border);
-  box-shadow: 0 -16px 34px -18px oklch(0 0 0 / 90%);
+  box-shadow: var(--shadow-bar);
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
+.bottom-nav ul {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  max-width: 28rem;
+  margin: 0 auto;
+  padding: 0.5rem 1rem;
+  list-style: none;
+}
+.bottom-nav li { flex: 1; display: flex; justify-content: center; }
 .bottom-nav a {
-  width: 3rem;
-  height: 3rem;
+  position: relative;
   display: grid;
   place-items: center;
-  border-radius: 50%;
-  position: relative;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
   color: oklch(0.97 0.004 85 / 70%);
+  outline: none;
+  transition: color 200ms, transform 150ms;
 }
+.bottom-nav a:hover { color: var(--primary); }
+.bottom-nav a:active { transform: scale(0.9); }
+.bottom-nav a:focus-visible { box-shadow: 0 0 0 2px var(--ring); }
 .bottom-nav svg {
+  position: relative;
   width: 1.5rem;
   height: 1.5rem;
   fill: none;
@@ -348,18 +547,26 @@ button, input { font: inherit; }
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.bottom-nav a.active { color: var(--primary-foreground); background: var(--gradient-gold); box-shadow: var(--shadow-gold); }
+.bottom-nav a.active { color: var(--primary-foreground); }
+.bottom-nav a.active svg { stroke-width: 2.3; }
+.bottom-nav a.active::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--gradient-gold);
+  box-shadow: var(--shadow-gold);
+  animation: bubble-pop 380ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
 
-/* ---------- aviso ---------- */
+/* ---------- aviso (toast) ---------- */
 .toast {
   position: fixed;
   top: 4.5rem;
   left: 50%;
-  transform: translate(-50%, -140%);
-  transition: transform 260ms;
   z-index: 60;
-  max-width: 22rem;
   width: calc(100% - 2.5rem);
+  max-width: 22rem;
   padding: 0.8rem 1rem;
   border-radius: 1rem;
   background: var(--card);
@@ -367,14 +574,24 @@ button, input { font: inherit; }
   box-shadow: var(--shadow-card);
   font-size: 0.9rem;
   text-align: center;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -150%);
+  transition: transform 260ms, opacity 260ms, visibility 260ms;
 }
-.toast.show { transform: translate(-50%, 0); }
+.toast.show { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
 
+/* ---------- animações ---------- */
 @keyframes rise {
   from { transform: translateY(14px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+@keyframes bubble-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  * { animation: none !important; transition: none !important; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }
