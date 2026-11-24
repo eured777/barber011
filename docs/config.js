@@ -17,6 +17,20 @@ window.RDC_CONFIG = {
     label: "Ter a Sáb · 9h às 19h",
   },
 
+  // Página "Sobre". Texto provisório: troque pela história real da barbearia.
+  about: {
+    story: [
+      "A RED DO CORTE nasceu da vontade de juntar o corte clássico de barbearia com o estilo de hoje. Começou com uma cadeira, uma navalha e muitos clientes amigos que viraram família.",
+      "Aqui cada atendimento é com hora marcada, sem fila e sem pressa: conversa boa, toalha quente e acabamento na navalha.",
+      "Do degradê ao corte social, da barba desenhada à sobrancelha, o nosso compromisso é você sair daqui do jeito que imaginou — ou melhor.",
+    ],
+    highlights: [
+      { icon: "scissors", title: "Feito à mão", text: "Tesoura, máquina e navalha com acabamento caprichado" },
+      { icon: "clock", title: "Hora marcada", text: "Terça a sábado · 9h às 19h" },
+      { icon: "award", title: "Atendimento de casa", text: "Ambiente tranquilo, do seu jeito" },
+    ],
+  },
+
   services: [
     {
       id: "corte",

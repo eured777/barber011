@@ -1,7 +1,7 @@
 /*
  * RED DO CORTE — lógica do site (HTML/CSS/JS puros).
  * Os dados da barbearia ficam em config.js (window.RDC_CONFIG).
- * Sem backend por enquanto: perfil e agendamentos ficam no localStorage deste navegador.
+ * Sem backend por enquanto: perfil, agendamentos, tema e avisos ficam no localStorage deste aparelho.
  */
 (function () {
   "use strict";
@@ -10,6 +10,8 @@
   const H = CFG.hours;
   const KEY_PROFILE = "rdc-profile";
   const KEY_BOOKINGS = "rdc-bookings";
+  const KEY_NOTIFS = "rdc-notifications";
+  const KEY_THEME = "rdc-theme";
 
   // ---------- utilidades ----------
   const app = document.getElementById("app");
@@ -30,6 +32,8 @@
   const minToTime = (m) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
   const fmtLong = (d) => new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" }).format(d);
   const fmtTime = (iso) => new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+  const fmtWhen = (iso) =>
+    new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
   const esc = (s) =>
     String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const digits = (s) => String(s).replace(/\D/g, "");
@@ -50,6 +54,24 @@
     const src = CFG.images?.[key];
     return src ? `<span class="photo-bg" style="background-image:url('${esc(src)}')"></span>` : `<span class="photo-bg"></span>`;
   };
+  // Ícones simples (traço), no mesmo estilo dos ícones do Lovable.
+  const ICONS = {
+    scissors: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.5 8.5L20 20M8.5 15.5L20 4"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    award: '<circle cx="12" cy="9" r="6"/><path d="M8.5 14.5L7 22l5-3 5 3-1.5-7.5"/>',
+    message: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.5A8 8 0 1 1 21 12z"/>',
+    pin: '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+    instagram: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.8"/>',
+    moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+    bellOff: '<path d="M8.7 3.5A6 6 0 0 1 18 8c0 2.6.5 4.5 1.2 5.8M6 8c0 7-3 8-3 8h12M10.3 21a1.9 1.9 0 0 0 3.4 0M3 3l18 18"/>',
+    calendarX: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9.5 14.5l5 5M14.5 14.5l-5 5"/>',
+    calendarClock: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M12 13v3l2 1.5"/>',
+    chevron: '<path d="M9 6l6 6-6 6"/>',
+    chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.5A8 8 0 1 1 21 12z"/>',
+  };
+  const icon = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] ?? ""}</svg>`;
 
   // localStorage protegido: navegador privado ou bloqueado não quebra o site
   function load(key, fallback) {
@@ -70,6 +92,8 @@
   const getProfile = () => load(KEY_PROFILE, null);
   const getBookings = () => load(KEY_BOOKINGS, []);
   const setBookings = (list) => save(KEY_BOOKINGS, list);
+  const getNotifs = () => load(KEY_NOTIFS, []);
+  const setNotifs = (list) => save(KEY_NOTIFS, list);
 
   let toastTimer;
   function toast(msg) {
@@ -78,6 +102,22 @@
     el.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+  }
+
+  // ---------- tema preto / branco ----------
+  const THEME_COLOR = { dark: "#141210", light: "#f8f5ef" };
+  function currentTheme() {
+    return document.documentElement.classList.contains("light") ? "light" : "dark";
+  }
+  function setTheme(theme) {
+    document.documentElement.classList.toggle("light", theme === "light");
+    const m = document.querySelector('meta[name="theme-color"]');
+    if (m) m.setAttribute("content", THEME_COLOR[theme]);
+    try {
+      localStorage.setItem(KEY_THEME, theme);
+    } catch {
+      /* tema vale só nesta visita */
+    }
   }
 
   // ---------- regras de horário (mesmas regras do schedule.ts do projeto Lovable) ----------
@@ -116,7 +156,7 @@
     return days;
   }
 
-  // ---------- topo ----------
+  // ---------- topo e menu ----------
   function renderAccount() {
     const profile = getProfile();
     const acc = document.getElementById("account");
@@ -132,7 +172,21 @@
       acc.href = "#/agendar";
     }
     const wa = document.getElementById("menu-contact");
-    wa.href = CFG.contact.whatsapp ? `https://wa.me/${CFG.contact.whatsapp}` : "#";
+    wa.href = "#/fale-conosco";
+  }
+
+  // Bolinha no botão do menu e contador ao lado de "Notificações" (avisos não lidos).
+  function renderBadges() {
+    const unread = getNotifs().filter((n) => !n.read_at).length;
+    const badge = document.getElementById("menu-badge");
+    const dot = document.getElementById("menu-dot");
+    badge.hidden = unread === 0;
+    badge.textContent = unread;
+    dot.hidden = unread === 0;
+    document.getElementById("menu-btn").setAttribute(
+      "aria-label",
+      unread > 0 ? `Menu, ${unread} notificação(ões) nova(s)` : "Menu",
+    );
   }
 
   // ---------- páginas ----------
@@ -146,8 +200,8 @@
           <p class="hero-kicker">Barbearia</p>
           <h1 class="hero-title">${esc(CFG.shopName)}</h1>
           <div class="hero-meta">
-            <span>🕘 ${esc(H.label)}</span>
-            <span>📍 Atendimento com hora marcada</span>
+            <span>${icon("clock").replace('<svg', '<svg width="14" height="14"').replace('viewBox="0 0 24 24"', 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"')} ${esc(H.label)}</span>
+            <span>${icon("pin").replace('<svg', '<svg width="14" height="14"').replace('viewBox="0 0 24 24"', 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"')} Atendimento com hora marcada</span>
           </div>
         </div>
       </section>
@@ -438,6 +492,159 @@
     );
   }
 
+  function renderNotificacoes() {
+    const list = getNotifs().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    app.innerHTML = `
+      ${pageHead("Notificações", "Avisos da barbearia sobre seus horários", "hero")}
+
+      <div style="margin-top:1.25rem;display:grid;gap:0.75rem">
+        ${
+          list.length === 0
+            ? `<div class="empty" style="padding:2rem 1.5rem">
+                 <p style="margin:0;color:var(--foreground);font-weight:700">Nenhum aviso</p>
+                 <p style="margin:0.4rem 0 0">Se a barbearia cancelar ou mudar seu horário, você fica sabendo aqui.</p>
+                 <p class="hint" style="margin-top:0.9rem">Nesta versão do site, os avisos só existem quando há um aviso salvo neste aparelho. Os avisos reais dependem do sistema da barbearia (Supabase), que ainda não está ligado.</p>
+               </div>`
+            : list
+                .map(
+                  (n) => `
+            <article class="notice ${n.read_at ? "" : "unread"}">
+              <span class="notice-icon ${n.kind === "cancelado" ? "cancel" : ""}">${icon(n.kind === "cancelado" ? "calendarX" : "calendarClock")}</span>
+              <div style="flex:1;min-width:0">
+                <h4>${esc(n.title)}</h4>
+                <p>${esc(n.body)}</p>
+                <time>${esc(fmtWhen(n.created_at))}</time>
+              </div>
+              <button class="x" aria-label="Apagar aviso" data-del="${esc(n.id)}">✕</button>
+            </article>`,
+                )
+                .join("")
+        }
+        ${list.length ? `<a class="btn-soft" href="#/meus-agendamentos" style="justify-self:start">Ver meus agendamentos</a>` : ""}
+      </div>
+    `;
+
+    // Abriu a tela: marca tudo como lido (o destaque some ao sair).
+    const now = new Date().toISOString();
+    const current = getNotifs();
+    if (current.some((n) => !n.read_at)) {
+      setNotifs(current.map((n) => (n.read_at ? n : { ...n, read_at: now })));
+    }
+    renderBadges();
+
+    app.querySelectorAll("[data-del]").forEach((el) =>
+      el.addEventListener("click", () => {
+        setNotifs(getNotifs().filter((n) => n.id !== el.dataset.del));
+        renderNotificacoes();
+      }),
+    );
+  }
+
+  function renderConfiguracoes() {
+    const dark = currentTheme() === "dark";
+    app.innerHTML = `
+      ${pageHead("Configurações", "Deixe o app do seu jeito", "hero")}
+
+      <h3 class="section-title">Aparência</h3>
+      <label class="setting" for="tema-escuro">
+        <span class="ico">${icon(dark ? "moon" : "sun")}</span>
+        <span class="txt">
+          <strong>Tema ${dark ? "preto" : "branco"}</strong>
+          <span>${dark ? "Desligue para usar o tema branco" : "Ligue para voltar ao tema preto"}</span>
+        </span>
+        <span class="switch">
+          <input type="checkbox" id="tema-escuro" aria-label="Tema preto" ${dark ? "checked" : ""} />
+          <span class="track"></span>
+        </span>
+      </label>
+
+      <div class="theme-options">
+        <button class="theme-option ${dark ? "on" : ""}" data-theme="dark" aria-pressed="${dark}">
+          <span class="swatch dark"></span><b>Preto</b>
+        </button>
+        <button class="theme-option ${!dark ? "on" : ""}" data-theme="light" aria-pressed="${!dark}">
+          <span class="swatch light"></span><b>Branco</b>
+        </button>
+      </div>
+      <p class="small-note">Sua escolha fica salva neste aparelho.</p>
+    `;
+
+    const toggle = document.getElementById("tema-escuro");
+    const apply = (theme) => {
+      setTheme(theme);
+      renderConfiguracoes();
+    };
+    toggle.addEventListener("change", () => apply(toggle.checked ? "dark" : "light"));
+    app.querySelectorAll("[data-theme]").forEach((el) => el.addEventListener("click", () => apply(el.dataset.theme)));
+  }
+
+  function renderSobre() {
+    const about = CFG.about;
+    app.innerHTML = `
+      ${pageHead("Sobre", "A nossa história", "hero")}
+
+      <h3 class="section-title">Quem somos</h3>
+      <span class="rule"></span>
+      <div class="story">
+        ${about.story.map((p) => `<p style="margin:0">${esc(p)}</p>`).join("")}
+      </div>
+
+      <ul class="list" style="margin-top:1.5rem">
+        ${about.highlights
+          .map(
+            (h) => `
+          <li class="highlight">
+            <span class="ico">${icon(h.icon)}</span>
+            <span><strong>${esc(h.title)}</strong><span>${esc(h.text)}</span></span>
+          </li>`,
+          )
+          .join("")}
+      </ul>
+
+      <a class="btn-gold" href="#/agendar">Agendar meu horário</a>
+    `;
+  }
+
+  function renderFaleConosco() {
+    const c = CFG.contact;
+    const waLink = c.whatsapp
+      ? `https://wa.me/${c.whatsapp}?text=${encodeURIComponent("Olá! Vim pelo app da RED DO CORTE.")}`
+      : null;
+    const row = (ic, label, value, href) => {
+      const body = `
+        <span class="ico">${icon(ic)}</span>
+        <span style="min-width:0">
+          <small>${esc(label)}</small>
+          <strong class="${value ? "" : "todo"}">${esc(value ?? "A definir")}</strong>
+        </span>`;
+      return href
+        ? `<li><a class="contact-row" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${body}</a></li>`
+        : `<li><div class="contact-row">${body}</div></li>`;
+    };
+    app.innerHTML = `
+      ${pageHead("Fale conosco", "Tire dúvidas direto com o barbeiro", "barba")}
+
+      <ul class="list" style="margin-top:1.5rem">
+        ${row("message", "WhatsApp", waLink ? c.whatsappLabel : null, waLink)}
+        ${row("instagram", "Instagram", c.instagram ? `@${c.instagram}` : null, c.instagram ? `https://instagram.com/${c.instagram}` : null)}
+        ${row("pin", "Endereço", c.address, c.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.address)}` : null)}
+        ${row("clock", "Horário", H.label, null)}
+      </ul>
+
+      ${waLink ? `<a class="btn-gold" href="${esc(waLink)}" target="_blank" rel="noopener noreferrer">${icon("message").replace("<svg", '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"')} Chamar no WhatsApp</a>` : ""}
+    `;
+  }
+
+  function renderNotFound() {
+    app.innerHTML = `
+      <div class="not-found">
+        <h1>404</h1>
+        <h2>Página não encontrada</h2>
+        <p>Essa página não existe ou foi movida.</p>
+        <a class="btn-gold" href="#/" style="max-width:16rem;margin-left:auto;margin-right:auto">Voltar ao início</a>
+      </div>`;
+  }
+
   // ---------- menu do topo ----------
   const menuBtn = document.getElementById("menu-btn");
   const menuPanel = document.getElementById("menu-panel");
@@ -453,7 +660,7 @@
     if (!menuPanel.hidden && !menuPanel.contains(e.target)) setMenu(false);
   });
   menuPanel.addEventListener("click", (e) => {
-    if (e.target.tagName === "A" && e.target.getAttribute("href") !== "#") setMenu(false);
+    if (e.target.closest("a")) setMenu(false);
   });
 
   // ---------- roteamento por hash (funciona no GitHub Pages sem configuração extra) ----------
@@ -462,11 +669,17 @@
     agendar: renderAgendar,
     "meus-agendamentos": renderMeus,
     servicos: renderServicos,
+    notificacoes: renderNotificacoes,
+    configuracoes: renderConfiguracoes,
+    sobre: renderSobre,
+    "fale-conosco": renderFaleConosco,
   };
 
   function route() {
     const path = location.hash.replace(/^#\/?/, "");
-    const key = routes[path] ? path : "";
+    const known = Object.prototype.hasOwnProperty.call(routes, path);
+    const key = known ? path : "";
+    // A barra inferior destaca só as 4 telas principais.
     document.querySelectorAll(".bottom-nav a").forEach((a) => {
       const on = a.dataset.route === key;
       a.classList.toggle("active", on);
@@ -474,9 +687,19 @@
       else a.removeAttribute("aria-current");
     });
     setMenu(false);
-    routes[key]();
+    if (known) routes[key]();
+    else renderNotFound();
     renderAccount();
+    renderBadges();
     window.scrollTo(0, 0);
+  }
+
+  // Tema salvo é aplicado também ao carregar (o script do head já faz isso; aqui sincronizamos a meta).
+  try {
+    const saved = localStorage.getItem(KEY_THEME);
+    if (saved) setTheme(saved);
+  } catch {
+    /* ignora */
   }
 
   window.addEventListener("hashchange", route);
