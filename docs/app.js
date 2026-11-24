@@ -1,13 +1,15 @@
 /*
  * RED DO CORTE — lógica do site (HTML/CSS/JS puros).
- * Os dados da barbearia ficam em config.js (window.RDC_CONFIG).
- * Sem backend por enquanto: perfil, agendamentos, tema e avisos ficam no localStorage deste aparelho.
+ * Os dados da barbearia e as contas de teste ficam em config.js (window.RDC_CONFIG).
+ * MODO DE TESTE: sem servidor. Login, agendamentos, avisos e tema ficam no localStorage
+ * deste navegador. Não é login real: quando o Supabase for ligado, esta parte é substituída.
  */
 (function () {
   "use strict";
 
   const CFG = window.RDC_CONFIG;
   const H = CFG.hours;
+  const KEY_SESSION = "rdc-session";
   const KEY_PROFILE = "rdc-profile";
   const KEY_BOOKINGS = "rdc-bookings";
   const KEY_NOTIFS = "rdc-notifications";
@@ -49,12 +51,10 @@
     if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
     return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
   }
-  // Foto de fundo opcional (config.images). Sem foto, o gradiente do tema aparece.
   const photo = (key) => {
     const src = CFG.images?.[key];
     return src ? `<span class="photo-bg" style="background-image:url('${esc(src)}')"></span>` : `<span class="photo-bg"></span>`;
   };
-  // Ícones simples (traço), no mesmo estilo dos ícones do Lovable.
   const ICONS = {
     scissors: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.5 8.5L20 20M8.5 15.5L20 4"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
@@ -64,12 +64,8 @@
     instagram: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.8"/>',
     moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
-    bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
-    bellOff: '<path d="M8.7 3.5A6 6 0 0 1 18 8c0 2.6.5 4.5 1.2 5.8M6 8c0 7-3 8-3 8h12M10.3 21a1.9 1.9 0 0 0 3.4 0M3 3l18 18"/>',
     calendarX: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9.5 14.5l5 5M14.5 14.5l-5 5"/>',
     calendarClock: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M12 13v3l2 1.5"/>',
-    chevron: '<path d="M9 6l6 6-6 6"/>',
-    chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.5A8 8 0 1 1 21 12z"/>',
   };
   const icon = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] ?? ""}</svg>`;
 
@@ -90,10 +86,17 @@
     }
   }
   const getProfile = () => load(KEY_PROFILE, null);
+  const getSession = () => load(KEY_SESSION, null);
   const getBookings = () => load(KEY_BOOKINGS, []);
   const setBookings = (list) => save(KEY_BOOKINGS, list);
-  const getNotifs = () => load(KEY_NOTIFS, []);
-  const setNotifs = (list) => save(KEY_NOTIFS, list);
+  const getAllNotifs = () => load(KEY_NOTIFS, []);
+  const setAllNotifs = (list) => save(KEY_NOTIFS, list);
+  // Avisos de quem está logado (cada aviso tem o e-mail do cliente em "to")
+  const myNotifs = () => {
+    const s = getSession();
+    return s ? getAllNotifs().filter((n) => n.to === s.email) : [];
+  };
+  const isAdmin = () => getSession()?.role === "admin";
 
   let toastTimer;
   function toast(msg) {
@@ -118,6 +121,27 @@
     } catch {
       /* tema vale só nesta visita */
     }
+  }
+
+  // ---------- sessão (modo de teste) ----------
+  function login(email, password) {
+    const e = String(email).trim().toLowerCase();
+    const acc = CFG.testAccounts.find((a) => a.email.toLowerCase() === e && a.password === password);
+    if (!acc) return false;
+    save(KEY_SESSION, { email: acc.email, role: acc.role, name: acc.name });
+    // Preenche o perfil com o nome da conta, se ainda não houver
+    if (!getProfile()) save(KEY_PROFILE, { name: acc.name, nickname: "", phone: "" });
+    return true;
+  }
+  function logout() {
+    try {
+      localStorage.removeItem(KEY_SESSION);
+    } catch {
+      /* ignora */
+    }
+    location.hash = "#/";
+    route();
+    toast("Você saiu da conta");
   }
 
   // ---------- regras de horário (mesmas regras do schedule.ts do projeto Lovable) ----------
@@ -158,12 +182,12 @@
 
   // ---------- topo e menu ----------
   function renderAccount() {
-    const profile = getProfile();
+    const s = getSession();
     const acc = document.getElementById("account");
-    if (profile?.name) {
+    if (s) {
       acc.className = "avatar";
-      acc.innerHTML = `<span>${esc(initials(profile.name))}</span>`;
-      acc.setAttribute("aria-label", `Minha conta: ${profile.name}`);
+      acc.innerHTML = `<span>${esc(initials(s.name))}</span>`;
+      acc.setAttribute("aria-label", `Minha conta: ${s.name}`);
       acc.href = "#/meus-agendamentos";
     } else {
       acc.className = "pill";
@@ -171,13 +195,15 @@
       acc.setAttribute("aria-label", "Entrar");
       acc.href = "#/entrar";
     }
-    const wa = document.getElementById("menu-contact");
-    wa.href = "#/fale-conosco";
+    document.getElementById("menu-admin").hidden = !isAdmin();
+    document.getElementById("menu-logout").hidden = !s;
+    document.getElementById("menu-login").hidden = !!s;
+    document.getElementById("menu-contact").href = "#/fale-conosco";
   }
 
-  // Bolinha no botão do menu e contador ao lado de "Notificações" (avisos não lidos).
+  // Bolinha no botão do menu e contador de avisos não lidos da conta logada.
   function renderBadges() {
-    const unread = getNotifs().filter((n) => !n.read_at).length;
+    const unread = myNotifs().filter((n) => !n.read_at).length;
     const badge = document.getElementById("menu-badge");
     const dot = document.getElementById("menu-dot");
     badge.hidden = unread === 0;
@@ -191,8 +217,8 @@
 
   // ---------- páginas ----------
   function renderHome() {
-    const profile = getProfile();
-    const first = profile?.name?.split(" ")[0];
+    const s = getSession();
+    const first = s?.name?.split(" ")[0];
     app.innerHTML = `
       <section class="hero">
         ${photo("hero")}
@@ -200,15 +226,15 @@
           <p class="hero-kicker">Barbearia</p>
           <h1 class="hero-title">${esc(CFG.shopName)}</h1>
           <div class="hero-meta">
-            <span>${icon("clock").replace('<svg', '<svg width="14" height="14"').replace('viewBox="0 0 24 24"', 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"')} ${esc(H.label)}</span>
-            <span>${icon("pin").replace('<svg', '<svg width="14" height="14"').replace('viewBox="0 0 24 24"', 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"')} Atendimento com hora marcada</span>
+            <span>${icon("clock").replace("<svg", '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"')} ${esc(H.label)}</span>
+            <span>${icon("pin").replace("<svg", '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"')} Atendimento com hora marcada</span>
           </div>
         </div>
       </section>
 
       <div class="home-heading">
         <h2>${first ? `Fala, ${esc(first)}!` : "O que você quer fazer?"}</h2>
-        <p class="subtitle">${first ? "Escolha uma opção para continuar" : "Escolha uma opção — vamos pedir seu WhatsApp para agendar"}</p>
+        <p class="subtitle">${first ? "Escolha uma opção para continuar" : "Escolha uma opção — você precisa entrar para agendar"}</p>
         <span class="gold-rule"></span>
       </div>
 
@@ -234,6 +260,17 @@
             <span class="arrow-circle">›</span>
           </span>
         </a>
+        ${
+          isAdmin()
+            ? `<a class="photo-card mirrored" href="#/painel" style="animation-delay:240ms">
+                 ${photo("hero")}
+                 <span class="content">
+                   <span><strong>Painel do barbeiro</strong><span class="desc">Gerencie a agenda do dia</span></span>
+                   <span class="arrow-circle">›</span>
+                 </span>
+               </a>`
+            : ""
+        }
       </div>
     `;
   }
@@ -396,6 +433,7 @@
   }
 
   function confirmBooking(service, slots) {
+    const session = getSession();
     const name = document.getElementById("f-name").value.trim();
     const nickname = document.getElementById("f-nick").value.trim();
     const phone = document.getElementById("f-phone").value;
@@ -415,6 +453,7 @@
       ...getBookings(),
       {
         id: (crypto && crypto.randomUUID && crypto.randomUUID()) || String(Date.now()),
+        client_email: session.email,
         client_name: name,
         client_nickname: nickname || null,
         client_phone: digits(phone),
@@ -436,8 +475,12 @@
   }
 
   function renderMeus() {
+    const session = getSession();
     const now = Date.now();
-    const all = getBookings().sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+    // Cada conta vê só os próprios horários
+    const all = getBookings()
+      .filter((b) => b.client_email === session.email)
+      .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
     const upcoming = all.filter((b) => b.status === "confirmado" && new Date(b.starts_at).getTime() > now);
     const history = all.filter((b) => !upcoming.includes(b)).reverse();
 
@@ -485,6 +528,7 @@
     app.querySelectorAll("[data-cancel]").forEach((el) =>
       el.addEventListener("click", () => {
         if (!window.confirm("Cancelar este horário?")) return;
+        // Cliente cancela só o próprio horário futuro (mesma regra do Lovable)
         setBookings(getBookings().map((b) => (b.id === el.dataset.cancel ? { ...b, status: "cancelado" } : b)));
         toast("Agendamento cancelado");
         renderMeus();
@@ -493,7 +537,7 @@
   }
 
   function renderNotificacoes() {
-    const list = getNotifs().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const list = myNotifs().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     app.innerHTML = `
       ${pageHead("Notificações", "Avisos da barbearia sobre seus horários", "hero")}
 
@@ -503,7 +547,6 @@
             ? `<div class="empty" style="padding:2rem 1.5rem">
                  <p style="margin:0;color:var(--foreground);font-weight:700">Nenhum aviso</p>
                  <p style="margin:0.4rem 0 0">Se a barbearia cancelar ou mudar seu horário, você fica sabendo aqui.</p>
-                 <p class="hint" style="margin-top:0.9rem">Nesta versão do site, os avisos só existem quando há um aviso salvo neste aparelho. Os avisos reais dependem do sistema da barbearia (Supabase), que ainda não está ligado.</p>
                </div>`
             : list
                 .map(
@@ -520,26 +563,222 @@
                 )
                 .join("")
         }
-        ${list.length ? `<a class="btn-soft" href="#/meus-agendamentos" style="justify-self:start">Ver meus agendamentos</a>` : ""}
       </div>
     `;
 
-    // Abriu a tela: marca tudo como lido (o destaque some ao sair).
+    // Abriu a tela: marca os avisos desta conta como lidos.
     const now = new Date().toISOString();
-    const current = getNotifs();
-    if (current.some((n) => !n.read_at)) {
-      setNotifs(current.map((n) => (n.read_at ? n : { ...n, read_at: now })));
+    const session = getSession();
+    const all = getAllNotifs();
+    if (all.some((n) => n.to === session.email && !n.read_at)) {
+      setAllNotifs(all.map((n) => (n.to === session.email && !n.read_at ? { ...n, read_at: now } : n)));
     }
     renderBadges();
 
     app.querySelectorAll("[data-del]").forEach((el) =>
       el.addEventListener("click", () => {
-        setNotifs(getNotifs().filter((n) => n.id !== el.dataset.del));
+        setAllNotifs(getAllNotifs().filter((n) => n.id !== el.dataset.del));
         renderNotificacoes();
       }),
     );
   }
 
+  // ---------- Painel do barbeiro (só conta admin) ----------
+  const painelState = { date: toKey(new Date()) };
+
+  function renderPainel() {
+    const day = painelState.date;
+    const dayBookings = getBookings()
+      .filter((b) => toKey(new Date(b.starts_at)) === day)
+      .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+    const active = dayBookings.filter((b) => b.status !== "cancelado");
+    const revenue = active.filter((b) => b.status !== "faltou").reduce((sum, b) => sum + b.price_cents, 0);
+    const days = Array.from({ length: 14 }, (_, i) => addDaysKey(toKey(new Date()), i));
+
+    app.innerHTML = `
+      ${pageHead("Painel do barbeiro", "Agenda de toda a barbearia", "hero")}
+
+      <h3 class="section-title">Dia</h3>
+      <div class="scroller">
+        ${days
+          .map((k) => {
+            const d = fromKey(k);
+            const wd = new Intl.DateTimeFormat("pt-BR", { weekday: "short" }).format(d).replace(".", "");
+            return `<button class="chip day-chip ${k === day ? "on" : ""}" data-pday="${k}">
+              <div class="wd">${esc(wd)}</div><div class="dn">${pad(d.getDate())}</div>
+            </button>`;
+          })
+          .join("")}
+      </div>
+
+      <div class="chip-row" style="margin-top:1rem">
+        <div class="card" style="padding:0.9rem;text-align:center">
+          <p style="margin:0;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted-foreground)">Agendamentos</p>
+          <p class="price" style="margin-top:0.25rem">${active.length}</p>
+        </div>
+        <div class="card" style="padding:0.9rem;text-align:center">
+          <p style="margin:0;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted-foreground)">Previsto</p>
+          <p class="price" style="margin-top:0.25rem">${brl(revenue)}</p>
+        </div>
+      </div>
+
+      <h3 class="section-title">Atendimentos</h3>
+      ${
+        dayBookings.length === 0
+          ? `<p class="empty">Agenda livre neste dia.</p>`
+          : `<ul class="list">
+              ${dayBookings
+                .map((b) => {
+                  const who = b.client_nickname ? `${esc(b.client_nickname)} <span class="muted">· ${esc(b.client_name)}</span>` : esc(b.client_name);
+                  const open = b.status === "confirmado";
+                  return `
+                  <li class="card booking" style="${open ? "" : "opacity:0.75"}">
+                    <div class="when">${fmtTime(b.starts_at)} · ${esc(b.barber_name)}</div>
+                    <p class="info" style="margin-top:0.35rem;color:var(--foreground);font-weight:700">${who}</p>
+                    <p class="info">${esc(b.service_name)} · ${brl(b.price_cents)}${b.client_phone ? ` · ${esc(formatPhone(b.client_phone))}` : ""}</p>
+                    <p style="margin:0.5rem 0 0"><span class="badge ${b.status === "cancelado" ? "off" : "ok"}">${esc(b.status)}</span></p>
+                    ${
+                      open
+                        ? `<div style="display:flex;flex-wrap:wrap;gap:0.5rem">
+                            <button class="btn-soft" data-status="concluido" data-id="${esc(b.id)}">Concluído</button>
+                            <button class="btn-soft" data-status="faltou" data-id="${esc(b.id)}">Faltou</button>
+                            <button class="btn-soft danger" data-status="cancelado" data-id="${esc(b.id)}">Cancelar</button>
+                           </div>`
+                        : ""
+                    }
+                  </li>`;
+                })
+                .join("")}
+            </ul>`
+      }
+    `;
+
+    app.querySelectorAll("[data-pday]").forEach((el) =>
+      el.addEventListener("click", () => {
+        painelState.date = el.dataset.pday;
+        renderPainel();
+      }),
+    );
+    app.querySelectorAll("[data-status]").forEach((el) =>
+      el.addEventListener("click", () => {
+        const status = el.dataset.status;
+        const id = el.dataset.id;
+        if (status === "cancelado" && !window.confirm("Cancelar este agendamento? O cliente recebe um aviso.")) return;
+        const bookings = getBookings();
+        const b = bookings.find((x) => x.id === id);
+        if (!b) return;
+        setBookings(bookings.map((x) => (x.id === id ? { ...x, status } : x)));
+        if (status === "cancelado") {
+          // Aviso para o cliente, como o trigger notify_booking_change do Lovable
+          setAllNotifs([
+            ...getAllNotifs(),
+            {
+              id: (crypto && crypto.randomUUID && crypto.randomUUID()) || String(Date.now()),
+              to: b.client_email,
+              kind: "cancelado",
+              title: "Seu horário foi cancelado",
+              body: `${b.service_name} com ${b.barber_name} em ${fmtWhen(b.starts_at)} foi cancelado pela barbearia. Agende um novo horário quando quiser.`,
+              created_at: new Date().toISOString(),
+              read_at: null,
+            },
+          ]);
+          toast("Agendamento cancelado. O cliente foi avisado em Notificações.");
+        } else {
+          toast(status === "concluido" ? "Marcado como concluído" : "Marcado como falta");
+        }
+        renderPainel();
+      }),
+    );
+  }
+
+  function renderAcessoNegado() {
+    app.innerHTML = `
+      ${pageHead("Acesso restrito", "Esta área é só do barbeiro", "hero")}
+      <div class="empty" style="margin-top:1.5rem;padding:2rem 1.5rem">
+        <p style="margin:0;color:var(--foreground);font-weight:700">Você não tem acesso ao painel.</p>
+        <p style="margin:0.4rem 0 0">Entre com a conta do barbeiro para ver a agenda.</p>
+        <a class="btn-soft" href="#/entrar">Trocar de conta</a>
+      </div>`;
+  }
+
+  // ---------- entrar / criar conta (modo de teste) ----------
+  const authMode = { value: "entrar" };
+  function renderEntrar() {
+    const creating = authMode.value === "cadastrar";
+    app.innerHTML = `
+      <section class="photo-head" style="height:11rem">
+        ${photo("fade")}
+        <div class="content" style="justify-content:flex-end">
+          <div>
+            <h1 style="font-size:2.4rem;white-space:nowrap">${esc(CFG.shopName)}</h1>
+            <p style="text-transform:uppercase;letter-spacing:0.25em;font-size:0.7rem;font-weight:800;color:var(--photo-accent);opacity:1">Agende na régua</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="tabs" role="tablist" style="margin-top:1.5rem">
+        <button role="tab" aria-selected="${!creating}" class="${creating ? "" : "on"}" data-mode="entrar">Entrar</button>
+        <button role="tab" aria-selected="${creating}" class="${creating ? "on" : ""}" data-mode="cadastrar">Criar conta</button>
+      </div>
+
+      <form class="auth-form" id="auth-form" novalidate style="margin-top:1.25rem">
+        ${
+          creating
+            ? `<input class="field" id="a-name" placeholder="Seu nome" autocomplete="name" />
+               <input class="field" id="a-nick" placeholder="Apelido (opcional)" autocomplete="nickname" />
+               <input class="field" id="a-phone" placeholder="WhatsApp com DDD" type="tel" inputmode="numeric" autocomplete="tel" />`
+            : ""
+        }
+        <input class="field" id="a-email" placeholder="E-mail" autocomplete="username" />
+        <input class="field" id="a-pass" placeholder="Senha" type="password" autocomplete="${creating ? "new-password" : "current-password"}" />
+        <button class="btn-gold" type="submit">${creating ? "Criar conta" : "Entrar"}</button>
+      </form>
+
+      <div class="divider" style="margin:1.25rem 0"><span></span>ou<span></span></div>
+
+      <button class="btn-google" id="btn-google" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>
+        Continuar com Google
+      </button>
+
+      <p class="notice-soft">Modo de teste: use <b>Redcorte@teste</b> (cliente) ou <b>Redcorte@adm</b> (barbeiro), senha <b>1234</b>. Os dados ficam só neste navegador. Criar conta e entrar com Google ainda não estão ligados.</p>
+    `;
+
+    app.querySelectorAll("[data-mode]").forEach((el) =>
+      el.addEventListener("click", () => {
+        authMode.value = el.dataset.mode;
+        renderEntrar();
+      }),
+    );
+    const phone = document.getElementById("a-phone");
+    if (phone) phone.addEventListener("input", () => (phone.value = formatPhone(phone.value)));
+    document.getElementById("auth-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (authMode.value === "cadastrar") return toast("Criar conta ainda não está ligado. Use as contas de teste.");
+      const email = document.getElementById("a-email").value;
+      const pass = document.getElementById("a-pass").value;
+      if (!login(email, pass)) return toast("E-mail ou senha incorretos");
+      const after = sessionStorage.getItem("after-login");
+      sessionStorage.removeItem("after-login");
+      renderAccount();
+      renderBadges();
+      toast(`Bem-vindo, ${getSession().name}!`);
+      location.hash = after && after !== "#/entrar" ? after : "#/";
+    });
+    document.getElementById("btn-google").addEventListener("click", () => toast("Entrar com Google ainda não está ligado"));
+  }
+
+  function renderNotFound() {
+    app.innerHTML = `
+      <div class="not-found">
+        <h1>404</h1>
+        <h2>Página não encontrada</h2>
+        <p>Essa página não existe ou foi movida.</p>
+        <a class="btn-gold" href="#/" style="max-width:16rem;margin-left:auto;margin-right:auto">Voltar ao início</a>
+      </div>`;
+  }
+
+  // ---------- Configurações, Sobre e Fale conosco ----------
   function renderConfiguracoes() {
     const dark = currentTheme() === "dark";
     app.innerHTML = `
@@ -635,80 +874,6 @@
     `;
   }
 
-  function renderNotFound() {
-    app.innerHTML = `
-      <div class="not-found">
-        <h1>404</h1>
-        <h2>Página não encontrada</h2>
-        <p>Essa página não existe ou foi movida.</p>
-        <a class="btn-gold" href="#/" style="max-width:16rem;margin-left:auto;margin-right:auto">Voltar ao início</a>
-      </div>`;
-  }
-
-  // ---------- entrar / criar conta (somente a tela: o login real depende do Supabase) ----------
-  const authMode = { value: "entrar" };
-  function renderEntrar() {
-    const creating = authMode.value === "cadastrar";
-    app.innerHTML = `
-      <section class="photo-head" style="height:11rem">
-        ${photo("fade")}
-        <div class="content" style="justify-content:flex-end">
-          <div>
-            <h1 style="font-size:2.4rem;white-space:nowrap">${esc(CFG.shopName)}</h1>
-            <p style="text-transform:uppercase;letter-spacing:0.25em;font-size:0.7rem;font-weight:800;color:var(--photo-accent);opacity:1">Agende na régua</p>
-          </div>
-        </div>
-      </section>
-
-      <div class="tabs" role="tablist" style="margin-top:1.5rem">
-        <button role="tab" aria-selected="${!creating}" class="${creating ? "" : "on"}" data-mode="entrar">Entrar</button>
-        <button role="tab" aria-selected="${creating}" class="${creating ? "on" : ""}" data-mode="cadastrar">Criar conta</button>
-      </div>
-
-      <form class="auth-form" id="auth-form" novalidate style="margin-top:1.25rem">
-        ${
-          creating
-            ? `<input class="field" id="a-name" placeholder="Seu nome" autocomplete="name" />
-               <input class="field" id="a-nick" placeholder="Apelido (opcional)" autocomplete="nickname" />
-               <input class="field" id="a-phone" placeholder="WhatsApp com DDD" type="tel" inputmode="numeric" autocomplete="tel" />`
-            : ""
-        }
-        <input class="field" id="a-email" placeholder="E-mail" type="email" autocomplete="email" />
-        <input class="field" id="a-pass" placeholder="Senha" type="password" autocomplete="${creating ? "new-password" : "current-password"}" />
-        <button class="btn-gold" type="submit">${creating ? "Criar conta" : "Entrar"}</button>
-      </form>
-
-      <div class="divider" style="margin:1.25rem 0"><span></span>ou<span></span></div>
-
-      <button class="btn-google" id="btn-google" type="button">
-        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>
-        Continuar com Google
-      </button>
-
-      <p class="notice-soft">Esta tela já está pronta. O login de verdade ainda não está ligado: ele depende do backend (Supabase), que ainda não foi criado. Por isso, por enquanto, nada é salvo nem enviado.</p>
-    `;
-
-    app.querySelectorAll("[data-mode]").forEach((el) =>
-      el.addEventListener("click", () => {
-        authMode.value = el.dataset.mode;
-        renderEntrar();
-      }),
-    );
-    const phone = document.getElementById("a-phone");
-    if (phone) {
-      phone.addEventListener("input", () => {
-        phone.value = formatPhone(phone.value);
-      });
-    }
-    document.getElementById("auth-form").addEventListener("submit", (e) => {
-      e.preventDefault();
-      toast("Login ainda não está ligado ao servidor");
-    });
-    document.getElementById("btn-google").addEventListener("click", () => {
-      toast("Entrar com Google ainda não está ligado");
-    });
-  }
-
   // ---------- menu do topo ----------
   const menuBtn = document.getElementById("menu-btn");
   const menuPanel = document.getElementById("menu-panel");
@@ -724,27 +889,47 @@
     if (!menuPanel.hidden && !menuPanel.contains(e.target)) setMenu(false);
   });
   menuPanel.addEventListener("click", (e) => {
-    if (e.target.closest("a")) setMenu(false);
+    const a = e.target.closest("a");
+    if (!a) return;
+    if (a.id === "menu-logout") {
+      e.preventDefault();
+      setMenu(false);
+      logout();
+      return;
+    }
+    setMenu(false);
   });
 
-  // ---------- roteamento por hash (funciona no GitHub Pages sem configuração extra) ----------
+  // ---------- roteamento por hash ----------
   const routes = {
     "": renderHome,
     agendar: renderAgendar,
     "meus-agendamentos": renderMeus,
     servicos: renderServicos,
     notificacoes: renderNotificacoes,
-    entrar: renderEntrar,
     configuracoes: renderConfiguracoes,
     sobre: renderSobre,
     "fale-conosco": renderFaleConosco,
+    entrar: renderEntrar,
+    painel: renderPainel,
   };
+  // Telas que exigem conta (como as rotas _authenticated do Lovable)
+  const NEEDS_LOGIN = ["agendar", "meus-agendamentos", "notificacoes", "painel"];
 
   function route() {
     const path = location.hash.replace(/^#\/?/, "");
     const known = Object.prototype.hasOwnProperty.call(routes, path);
     const key = known ? path : "";
-    // A barra inferior destaca só as 4 telas principais.
+    const session = getSession();
+
+    // Sem conta: manda para entrar, guardando a tela pedida
+    if (known && NEEDS_LOGIN.includes(key) && !session) {
+      sessionStorage.setItem("after-login", `#/${key}`);
+      toast("Entre na sua conta para continuar");
+      location.hash = "#/entrar";
+      return;
+    }
+
     document.querySelectorAll(".bottom-nav a").forEach((a) => {
       const on = a.dataset.route === key;
       a.classList.toggle("active", on);
@@ -752,8 +937,11 @@
       else a.removeAttribute("aria-current");
     });
     setMenu(false);
-    if (known) routes[key]();
-    else renderNotFound();
+
+    if (!known) renderNotFound();
+    else if (key === "painel" && !isAdmin()) renderAcessoNegado();
+    else routes[key]();
+
     renderAccount();
     renderBadges();
     window.scrollTo(0, 0);

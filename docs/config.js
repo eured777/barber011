@@ -17,6 +17,14 @@ window.RDC_CONFIG = {
     label: "Ter a Sáb · 9h às 19h",
   },
 
+  // CONTAS DE TESTE (modo de teste, sem servidor). A senha fica visível no código:
+  // não use estas contas para dados reais. Quando o Supabase for ligado, isso sai.
+  // role "cliente" usa o agendamento; role "admin" também abre o Painel do barbeiro.
+  testAccounts: [
+    { email: "Redcorte@teste", password: "1234", role: "cliente", name: "Cliente Teste" },
+    { email: "Redcorte@adm", password: "1234", role: "admin", name: "Administrador" },
+  ],
+
   // Página "Sobre". Texto provisório: troque pela história real da barbearia.
   about: {
     story: [
