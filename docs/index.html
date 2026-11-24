@@ -10,6 +10,8 @@
             var m = document.querySelector('meta[name="theme-color"]');
             if (m) m.setAttribute("content", "#f8f5ef");
           }
+          var f = localStorage.getItem("rdc-font");
+          if (f === "sm" || f === "lg") document.documentElement.classList.add("fs-" + f);
         } catch (e) {}
       })();
     </script>

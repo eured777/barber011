@@ -15,7 +15,14 @@
     notifs: "rdc-notifications",
     theme: "rdc-theme",
     config: "rdc-config",
+    font: "rdc-font",
   };
+  const FONT_SIZES = [
+    { id: "sm", label: "Pequeno", preview: "14px" },
+    { id: "md", label: "Médio", preview: "18px" },
+    { id: "lg", label: "Grande", preview: "22px" },
+  ];
+  const contactState = { editing: false };
   const WEEKDAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
   const THEME_COLOR = { dark: "#141210", light: "#f8f5ef" };
 
@@ -154,6 +161,31 @@
     "-" +
     Math.random().toString(36).slice(2, 6);
   const serviceById = (id) => services().find((s) => s.id === id);
+
+  // Contato: o que o admin altera em Fale conosco sobrepõe config.js
+  const contact = () => ({ ...CFG.contact, ...(ovr().contact ?? {}) });
+
+  // Tamanho da letra (vale neste aparelho)
+  function currentFont() {
+    try {
+      const v = localStorage.getItem(KEYS.font);
+      return v === "sm" || v === "lg" ? v : "md";
+    } catch {
+      return "md";
+    }
+  }
+  function applyFont(id) {
+    document.documentElement.classList.remove("fs-sm", "fs-lg");
+    if (id !== "md") document.documentElement.classList.add(`fs-${id}`);
+  }
+  function setFont(id) {
+    try {
+      localStorage.setItem(KEYS.font, id);
+    } catch {
+      /* vale só nesta visita */
+    }
+    applyFont(id);
+  }
 
   const isWeekdayOn = (key) => hours().weekdays.includes(fromKey(key).getDay());
   const isDayOpen = (key) => isWeekdayOn(key) && !closedDates().includes(key);
@@ -1118,7 +1150,16 @@
           <span class="swatch light"></span><b>Branco</b>
         </button>
       </div>
-      <p class="small-note">Sua escolha fica salva neste aparelho.</p>
+      <h3 class="section-title">Tamanho da letra</h3>
+      <div class="theme-options" style="grid-template-columns:repeat(3,1fr)">
+        ${FONT_SIZES.map(
+          (f) => `
+          <button class="theme-option ${currentFont() === f.id ? "on" : ""}" data-font="${f.id}" aria-pressed="${currentFont() === f.id}">
+            <span style="font-size:${f.preview};font-weight:800;line-height:1">Aa</span><b>${f.label}</b>
+          </button>`,
+        ).join("")}
+      </div>
+      <p class="small-note">Sua escolha fica salva neste aparelho. Mude quando quiser.</p>
     `;
 
     const toggle = document.getElementById("tema-escuro");
@@ -1128,6 +1169,12 @@
     };
     toggle.addEventListener("change", () => apply(toggle.checked ? "dark" : "light"));
     app.querySelectorAll("[data-theme]").forEach((el) => el.addEventListener("click", () => apply(el.dataset.theme)));
+    app.querySelectorAll("[data-font]").forEach((el) =>
+      el.addEventListener("click", () => {
+        setFont(el.dataset.font);
+        renderConfiguracoes();
+      }),
+    );
   }
 
   function renderSobre() {
@@ -1159,7 +1206,7 @@
   }
 
   function renderFaleConosco() {
-    const c = CFG.contact;
+    const c = contact();
     const waLink = c.whatsapp
       ? `https://wa.me/${c.whatsapp}?text=${encodeURIComponent("Olá! Vim pelo app da RED DO CORTE.")}`
       : null;
@@ -1178,14 +1225,82 @@
       ${pageHead("Fale conosco", "Tire dúvidas direto com o barbeiro", "barba")}
 
       <ul class="list" style="margin-top:1.5rem">
-        ${row("message", "WhatsApp", waLink ? c.whatsappLabel : null, waLink)}
+        ${row("message", "WhatsApp", waLink ? formatPhone(c.whatsapp.replace(/^55/, "")) : null, waLink)}
         ${row("instagram", "Instagram", c.instagram ? `@${c.instagram}` : null, c.instagram ? `https://instagram.com/${c.instagram}` : null)}
         ${row("pin", "Endereço", c.address, c.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.address)}` : null)}
         ${row("clock", "Horário", hoursLabel(), null)}
       </ul>
+      ${
+        isAdmin()
+          ? contactState.editing
+            ? contactForm(c)
+            : `<div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:1rem">
+                 <button class="btn-soft" id="ct-edit">Editar informações</button>
+                 <a class="btn-soft" id="ct-hours" href="#/painel">Alterar horário</a>
+               </div>`
+          : ""
+      }
 
       ${waLink ? `<a class="btn-gold" href="${esc(waLink)}" target="_blank" rel="noopener noreferrer">${icon("message").replace("<svg", '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"')} Chamar no WhatsApp</a>` : ""}
     `;
+    bindFale();
+  }
+
+  // Formulário de contato (só admin)
+  function contactForm(c) {
+    return `
+      <form class="card" id="ct-form" novalidate style="display:grid;gap:0.6rem;margin-top:1rem">
+        <p class="hint" style="margin:0">Editando as informações da barbearia. O WhatsApp é obrigatório; Instagram e endereço podem ficar em branco.</p>
+        <label class="hint" style="display:grid;gap:0.35rem">WhatsApp (com DDD)
+          <input class="field" id="ct-wa" inputmode="numeric" value="${esc(c.whatsapp ? formatPhone(c.whatsapp.replace(/^55/, "")) : "")}" />
+        </label>
+        <label class="hint" style="display:grid;gap:0.35rem">Instagram (sem @)
+          <input class="field" id="ct-ig" value="${esc(c.instagram ?? "")}" />
+        </label>
+        <label class="hint" style="display:grid;gap:0.35rem">Endereço
+          <input class="field" id="ct-addr" value="${esc(c.address ?? "")}" />
+        </label>
+        <div style="display:flex;gap:0.5rem">
+          <button type="button" class="btn-gold" id="ct-save" style="flex:1">Salvar</button>
+          <button type="button" class="btn-soft" id="ct-cancel">Cancelar</button>
+        </div>
+      </form>`;
+  }
+
+  function bindFale() {
+    const edit = document.getElementById("ct-edit");
+    if (edit)
+      edit.addEventListener("click", () => {
+        contactState.editing = true;
+        renderFaleConosco();
+      });
+    const cancel = document.getElementById("ct-cancel");
+    if (cancel)
+      cancel.addEventListener("click", () => {
+        contactState.editing = false;
+        renderFaleConosco();
+      });
+    const waInput = document.getElementById("ct-wa");
+    if (waInput) waInput.addEventListener("input", () => (waInput.value = formatPhone(waInput.value)));
+    const save = document.getElementById("ct-save");
+    if (save)
+      save.addEventListener("click", () => {
+        const d = digits(document.getElementById("ct-wa").value);
+        const ig = document.getElementById("ct-ig").value.replace(/[@\s]/g, "");
+        const addr = document.getElementById("ct-addr").value.trim();
+        if (!isValidWhatsApp(d)) return toast("Informe o WhatsApp com DDD");
+        saveOvr({ contact: { whatsapp: `55${d}`, instagram: ig || null, address: addr || null } });
+        contactState.editing = false;
+        toast("Informações salvas");
+        renderFaleConosco();
+      });
+    // Abrir o horário já na aba Horários do painel
+    const hoursBtn = document.getElementById("ct-hours");
+    if (hoursBtn)
+      hoursBtn.addEventListener("click", () => {
+        painel.tab = "horarios";
+        painel.draft = null;
+      });
   }
 
   // ---------- menu do topo ----------

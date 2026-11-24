@@ -1,3 +1,11 @@
+/* Tamanho da letra escolhido em Configurações (vale neste aparelho). */
+html.fs-sm {
+  font-size: 14px;
+}
+html.fs-lg {
+  font-size: 18px;
+}
+
 /* Calendário mensal (agendamento e painel do barbeiro). Usa os mesmos tokens do styles.css. */
 .cal {
   margin-top: 0.5rem;
