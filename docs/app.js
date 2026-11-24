@@ -169,7 +169,7 @@
       acc.className = "pill";
       acc.textContent = "Entrar";
       acc.setAttribute("aria-label", "Entrar");
-      acc.href = "#/agendar";
+      acc.href = "#/entrar";
     }
     const wa = document.getElementById("menu-contact");
     wa.href = "#/fale-conosco";
@@ -645,6 +645,70 @@
       </div>`;
   }
 
+  // ---------- entrar / criar conta (somente a tela: o login real depende do Supabase) ----------
+  const authMode = { value: "entrar" };
+  function renderEntrar() {
+    const creating = authMode.value === "cadastrar";
+    app.innerHTML = `
+      <section class="photo-head" style="height:11rem">
+        ${photo("fade")}
+        <div class="content" style="justify-content:flex-end">
+          <div>
+            <h1 style="font-size:2.4rem;white-space:nowrap">${esc(CFG.shopName)}</h1>
+            <p style="text-transform:uppercase;letter-spacing:0.25em;font-size:0.7rem;font-weight:800;color:var(--photo-accent);opacity:1">Agende na régua</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="tabs" role="tablist" style="margin-top:1.5rem">
+        <button role="tab" aria-selected="${!creating}" class="${creating ? "" : "on"}" data-mode="entrar">Entrar</button>
+        <button role="tab" aria-selected="${creating}" class="${creating ? "on" : ""}" data-mode="cadastrar">Criar conta</button>
+      </div>
+
+      <form class="auth-form" id="auth-form" novalidate style="margin-top:1.25rem">
+        ${
+          creating
+            ? `<input class="field" id="a-name" placeholder="Seu nome" autocomplete="name" />
+               <input class="field" id="a-nick" placeholder="Apelido (opcional)" autocomplete="nickname" />
+               <input class="field" id="a-phone" placeholder="WhatsApp com DDD" type="tel" inputmode="numeric" autocomplete="tel" />`
+            : ""
+        }
+        <input class="field" id="a-email" placeholder="E-mail" type="email" autocomplete="email" />
+        <input class="field" id="a-pass" placeholder="Senha" type="password" autocomplete="${creating ? "new-password" : "current-password"}" />
+        <button class="btn-gold" type="submit">${creating ? "Criar conta" : "Entrar"}</button>
+      </form>
+
+      <div class="divider" style="margin:1.25rem 0"><span></span>ou<span></span></div>
+
+      <button class="btn-google" id="btn-google" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>
+        Continuar com Google
+      </button>
+
+      <p class="notice-soft">Esta tela já está pronta. O login de verdade ainda não está ligado: ele depende do backend (Supabase), que ainda não foi criado. Por isso, por enquanto, nada é salvo nem enviado.</p>
+    `;
+
+    app.querySelectorAll("[data-mode]").forEach((el) =>
+      el.addEventListener("click", () => {
+        authMode.value = el.dataset.mode;
+        renderEntrar();
+      }),
+    );
+    const phone = document.getElementById("a-phone");
+    if (phone) {
+      phone.addEventListener("input", () => {
+        phone.value = formatPhone(phone.value);
+      });
+    }
+    document.getElementById("auth-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      toast("Login ainda não está ligado ao servidor");
+    });
+    document.getElementById("btn-google").addEventListener("click", () => {
+      toast("Entrar com Google ainda não está ligado");
+    });
+  }
+
   // ---------- menu do topo ----------
   const menuBtn = document.getElementById("menu-btn");
   const menuPanel = document.getElementById("menu-panel");
@@ -670,6 +734,7 @@
     "meus-agendamentos": renderMeus,
     servicos: renderServicos,
     notificacoes: renderNotificacoes,
+    entrar: renderEntrar,
     configuracoes: renderConfiguracoes,
     sobre: renderSobre,
     "fale-conosco": renderFaleConosco,
