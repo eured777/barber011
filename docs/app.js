@@ -83,6 +83,7 @@
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
     calendarX: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9.5 14.5l5 5M14.5 14.5l-5 5"/>',
     calendarClock: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M12 13v3l2 1.5"/>',
+    pencil: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
     panel: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   };
   const icon = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] ?? ""}</svg>`;
@@ -137,10 +138,21 @@
   const hoursLabel = () => labelFrom(hours());
   const closedDates = () => ovr().closedDates ?? [];
 
+  // Lista de serviços: a salva pelo admin substitui a do config.js
   function services() {
+    const base = ovr().services ?? CFG.services;
     const p = ovr().prices ?? {};
-    return CFG.services.map((s) => ({ ...s, priceCents: p[s.id] ?? s.priceCents }));
+    return base.map((s) => ({ ...s, priceCents: p[s.id] ?? s.priceCents }));
   }
+  const slugId = (name) =>
+    name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") +
+    "-" +
+    Math.random().toString(36).slice(2, 6);
   const serviceById = (id) => services().find((s) => s.id === id);
 
   const isWeekdayOn = (key) => hours().weekdays.includes(fromKey(key).getDay());
@@ -664,6 +676,7 @@
     date: toKey(new Date()),
     month: monthOf(toKey(new Date())),
     draft: null, // horários em edição, antes de salvar
+    editing: null, // serviço em edição: id, "new" ou null
   };
 
   const activeCount = (k) =>
@@ -780,27 +793,59 @@
     `;
   }
 
-  function painelServicos() {
+  function serviceForm(s) {
     return `
-      <h3 class="section-title">Valores dos serviços</h3>
-      <p class="hint">Estes são os valores que o cliente vê em Serviços e no agendamento.</p>
+      <form class="card" id="svc-form" novalidate style="display:grid;gap:0.6rem;margin-top:0.75rem">
+        <p class="hint" style="margin:0">${s ? `Editando ${esc(s.name)}` : "Novo serviço"}</p>
+        <input class="field" id="sv-name" placeholder="Nome do serviço" value="${esc(s?.name ?? "")}" />
+        <input class="field" id="sv-desc" placeholder="Descrição (opcional)" value="${esc(s?.description ?? "")}" />
+        <div class="chip-row">
+          <label class="hint" style="display:grid;gap:0.35rem">Tempo (min)
+            <input class="field" id="sv-dur" inputmode="numeric" value="${esc(s?.durationMin ?? 30)}" />
+          </label>
+          <label class="hint" style="display:grid;gap:0.35rem">Preço (R$)
+            <input class="field" id="sv-price" inputmode="decimal" value="${esc(s ? centsToInput(s.priceCents) : "")}" />
+          </label>
+        </div>
+        <div style="display:flex;gap:0.5rem">
+          <button type="button" class="btn-gold" id="sv-save" style="flex:1">Salvar</button>
+          <button type="button" class="btn-soft" id="sv-cancel">Cancelar</button>
+        </div>
+      </form>`;
+  }
+
+  function painelServicos() {
+    const list = services();
+    const editing = painel.editing;
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;margin-top:0.5rem">
+        <h3 class="section-title" style="margin:0">Serviços</h3>
+        <button class="btn-soft" id="svc-add">+ Adicionar serviço</button>
+      </div>
+      <p class="hint">Estes são os serviços e valores que o cliente vê. Toque no lápis para alterar.</p>
+      ${editing === "new" ? serviceForm(null) : ""}
       <ul class="list">
-        ${services()
+        ${list
           .map(
             (s) => `
-          <li class="card service-row">
-            <div>
-              <h3>${esc(s.name)}</h3>
-              <p>${durLabel(s.durationMin)}</p>
+          <li class="card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.75rem">
+              <div style="min-width:0">
+                <h3 style="display:flex;align-items:center;gap:0.4rem;margin:0">${esc(s.name)}
+                  <button class="pencil" data-edit="${esc(s.id)}" aria-label="Alterar nome de ${esc(s.name)}" title="Alterar nome">${icon("pencil")}</button>
+                </h3>
+                ${s.description ? `<p class="hint" style="margin:0.25rem 0 0">${esc(s.description)}</p>` : ""}
+                <p style="margin:0.35rem 0 0;display:flex;align-items:center;gap:0.4rem">⏱ ${durLabel(s.durationMin)}
+                  <button class="pencil" data-edit="${esc(s.id)}" aria-label="Alterar tempo de ${esc(s.name)}" title="Alterar tempo">${icon("pencil")}</button>
+                </p>
+              </div>
+              <span class="price">${brl(s.priceCents)}</span>
             </div>
-            <input class="field" style="max-width:8rem;text-align:right" inputmode="decimal"
-              data-price="${esc(s.id)}" value="${esc(centsToInput(s.priceCents))}" aria-label="Preço de ${esc(s.name)} em reais" />
+            ${editing === s.id ? serviceForm(s) : ""}
           </li>`,
           )
           .join("")}
-      </ul>
-      <button class="btn-gold" id="save-prices">Salvar valores</button>
-    `;
+      </ul>`;
   }
 
   function renderPainel() {
@@ -910,19 +955,50 @@
       });
     }
 
-    // Valores: lê "45,00" (reais, vírgula) ou "45.00"
-    const savePrices = document.getElementById("save-prices");
-    if (savePrices) {
-      savePrices.addEventListener("click", () => {
-        const map = {};
-        for (const el of app.querySelectorAll("[data-price]")) {
-          const raw = el.value.trim();
-          const n = raw.includes(",") ? Number(raw.replace(/\./g, "").replace(",", ".")) : Number(raw);
-          if (!Number.isFinite(n) || n < 0) return toast(`Valor inválido para ${el.getAttribute("aria-label")}`);
-          map[el.dataset.price] = Math.round(n * 100);
-        }
-        saveOvr({ prices: map });
-        toast("Valores salvos. O cliente já vê os novos preços.");
+    // Serviços: lápis (nome ou tempo) abre a mesma edição; "+ Adicionar" abre um serviço novo
+    app.querySelectorAll("[data-edit]").forEach((el) =>
+      el.addEventListener("click", () => {
+        painel.editing = el.dataset.edit;
+        renderPainel();
+      }),
+    );
+    const svcAdd = document.getElementById("svc-add");
+    if (svcAdd) {
+      svcAdd.addEventListener("click", () => {
+        painel.editing = "new";
+        renderPainel();
+      });
+    }
+    const svcCancel = document.getElementById("sv-cancel");
+    if (svcCancel) {
+      svcCancel.addEventListener("click", () => {
+        painel.editing = null;
+        renderPainel();
+      });
+    }
+    const svcSave = document.getElementById("sv-save");
+    if (svcSave) {
+      svcSave.addEventListener("click", () => {
+        const name = document.getElementById("sv-name").value.trim();
+        const description = document.getElementById("sv-desc").value.trim();
+        const dur = Number(document.getElementById("sv-dur").value);
+        const raw = document.getElementById("sv-price").value.trim();
+        // Aceita "45,00" (reais com vírgula) ou "45.00"
+        const price = raw.includes(",") ? Number(raw.replace(/\./g, "").replace(",", ".")) : Number(raw);
+        if (!name) return toast("Informe o nome do serviço");
+        if (!Number.isInteger(dur) || dur < 10 || dur > 240) return toast("O tempo precisa ser entre 10 e 240 minutos");
+        if (!Number.isFinite(price) || price < 0) return toast("Informe um preço válido");
+
+        const cents = Math.round(price * 100);
+        const list = services();
+        const next =
+          painel.editing === "new"
+            ? [...list, { id: slugId(name), name, description, durationMin: dur, priceCents: cents }]
+            : list.map((s) => (s.id === painel.editing ? { ...s, name, description, durationMin: dur, priceCents: cents } : s));
+        // prices: {} zera o mapa antigo, para o valor novo não ser sobreposto
+        saveOvr({ services: next, prices: {} });
+        painel.editing = null;
+        toast("Serviço salvo. O cliente já vê a alteração.");
         renderPainel();
       });
     }
