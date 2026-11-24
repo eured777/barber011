@@ -28,6 +28,7 @@
       href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700;800&display=swap"
     />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="calendar.css" />
   </head>
   <body>
     <header class="topbar">
@@ -39,7 +40,6 @@
         <nav class="menu-panel" id="menu-panel" hidden>
           <p class="menu-label">RED DO CORTE</p>
           <a href="#/notificacoes">Notificações <span class="menu-badge" id="menu-badge" hidden></span></a>
-          <a href="#/painel" id="menu-admin" hidden>Painel do barbeiro</a>
           <a href="#/configuracoes">Configurações</a>
           <a id="menu-contact" href="#/fale-conosco">Fale conosco</a>
           <a href="#/sobre">Sobre</a>
@@ -68,6 +68,9 @@
         </a></li>
         <li><a href="#/servicos" aria-label="Serviços" title="Serviços" data-route="servicos">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.5 8.5L20 20M8.5 15.5L20 4"/></svg>
+        </a></li>
+        <li id="nav-admin" hidden><a href="#/painel" aria-label="Painel do barbeiro" title="Painel do barbeiro" data-route="painel">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
         </a></li>
       </ul>
     </nav>

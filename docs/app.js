@@ -1,22 +1,27 @@
 /*
  * RED DO CORTE — lógica do site (HTML/CSS/JS puros).
- * Os dados da barbearia e as contas de teste ficam em config.js (window.RDC_CONFIG).
- * MODO DE TESTE: sem servidor. Login, agendamentos, avisos e tema ficam no localStorage
- * deste navegador. Não é login real: quando o Supabase for ligado, esta parte é substituída.
+ * Dados base ficam em config.js (window.RDC_CONFIG).
+ * MODO DE TESTE: sem servidor. Login, agendamentos, avisos e ajustes do barbeiro
+ * (dias, horários, dias fechados e valores) ficam no localStorage DESTE navegador.
  */
 (function () {
   "use strict";
 
   const CFG = window.RDC_CONFIG;
-  const H = CFG.hours;
-  const KEY_SESSION = "rdc-session";
-  const KEY_PROFILE = "rdc-profile";
-  const KEY_BOOKINGS = "rdc-bookings";
-  const KEY_NOTIFS = "rdc-notifications";
-  const KEY_THEME = "rdc-theme";
+  const KEYS = {
+    session: "rdc-session",
+    profile: "rdc-profile",
+    bookings: "rdc-bookings",
+    notifs: "rdc-notifications",
+    theme: "rdc-theme",
+    config: "rdc-config",
+  };
+  const WEEKDAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const THEME_COLOR = { dark: "#141210", light: "#f8f5ef" };
+
+  const app = document.getElementById("app");
 
   // ---------- utilidades ----------
-  const app = document.getElementById("app");
   const pad = (n) => String(n).padStart(2, "0");
   const toKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   const fromKey = (s) => {
@@ -28,10 +33,22 @@
     d.setDate(d.getDate() + n);
     return toKey(d);
   };
-  const isOpenDay = (s) => H.weekdays.includes(fromKey(s).getDay());
+  const monthOf = (k) => k.slice(0, 7);
+  function shiftMonth(ym, n) {
+    const [y, m] = ym.split("-").map(Number);
+    const d = new Date(y, m - 1 + n, 1);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+  }
+  function monthTitle(ym) {
+    const [y, m] = ym.split("-").map(Number);
+    const s = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(y, m - 1, 1));
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
   const brl = (cents) => (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const centsToInput = (c) => (c / 100).toFixed(2).replace(".", ",");
   const durLabel = (m) => (m < 60 ? `${m} min` : m % 60 ? `${Math.floor(m / 60)}h${pad(m % 60)}` : `${m / 60}h`);
   const minToTime = (m) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+  const hourLabel = (m) => (m % 60 ? `${Math.floor(m / 60)}h${pad(m % 60)}` : `${m / 60}h`);
   const fmtLong = (d) => new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" }).format(d);
   const fmtTime = (iso) => new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
   const fmtWhen = (iso) =>
@@ -66,6 +83,7 @@
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
     calendarX: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9.5 14.5l5 5M14.5 14.5l-5 5"/>',
     calendarClock: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M12 13v3l2 1.5"/>',
+    panel: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   };
   const icon = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] ?? ""}</svg>`;
 
@@ -85,30 +103,59 @@
       /* sem persistência neste navegador */
     }
   }
-  const getProfile = () => load(KEY_PROFILE, null);
-  const getSession = () => load(KEY_SESSION, null);
-  const getBookings = () => load(KEY_BOOKINGS, []);
-  const setBookings = (list) => save(KEY_BOOKINGS, list);
-  const getAllNotifs = () => load(KEY_NOTIFS, []);
-  const setAllNotifs = (list) => save(KEY_NOTIFS, list);
-  // Avisos de quem está logado (cada aviso tem o e-mail do cliente em "to")
+  const getProfile = () => load(KEYS.profile, null);
+  const getSession = () => load(KEYS.session, null);
+  const getBookings = () => load(KEYS.bookings, []);
+  const setBookings = (list) => save(KEYS.bookings, list);
+  const getAllNotifs = () => load(KEYS.notifs, []);
+  const setAllNotifs = (list) => save(KEYS.notifs, list);
   const myNotifs = () => {
     const s = getSession();
     return s ? getAllNotifs().filter((n) => n.to === s.email) : [];
   };
   const isAdmin = () => getSession()?.role === "admin";
+  const uid = () => (crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()));
 
+  // ---------- ajustes do barbeiro (sobrepõem config.js) ----------
+  const ovr = () => load(KEYS.config, {});
+  const saveOvr = (patch) => save(KEYS.config, { ...ovr(), ...patch });
+
+  function hours() {
+    const o = ovr().hours || {};
+    return {
+      weekdays: o.weekdays ?? CFG.hours.weekdays,
+      openMin: o.openMin ?? CFG.hours.openMin,
+      closeMin: o.closeMin ?? CFG.hours.closeMin,
+      slotStepMin: CFG.hours.slotStepMin,
+      daysAhead: CFG.hours.daysAhead,
+    };
+  }
+  function labelFrom(h) {
+    const days = [...h.weekdays].sort((a, b) => a - b).map((d) => WEEKDAY_NAMES[d]);
+    return `${days.join(", ") || "Fechado"} · ${hourLabel(h.openMin)} às ${hourLabel(h.closeMin)}`;
+  }
+  const hoursLabel = () => labelFrom(hours());
+  const closedDates = () => ovr().closedDates ?? [];
+
+  function services() {
+    const p = ovr().prices ?? {};
+    return CFG.services.map((s) => ({ ...s, priceCents: p[s.id] ?? s.priceCents }));
+  }
+  const serviceById = (id) => services().find((s) => s.id === id);
+
+  const isWeekdayOn = (key) => hours().weekdays.includes(fromKey(key).getDay());
+  const isDayOpen = (key) => isWeekdayOn(key) && !closedDates().includes(key);
+
+  // ---------- toast e tema ----------
   let toastTimer;
   function toast(msg) {
     const el = document.getElementById("toast");
     el.textContent = msg;
     el.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+    toastTimer = setTimeout(() => el.classList.remove("show"), 2800);
   }
 
-  // ---------- tema preto / branco ----------
-  const THEME_COLOR = { dark: "#141210", light: "#f8f5ef" };
   function currentTheme() {
     return document.documentElement.classList.contains("light") ? "light" : "dark";
   }
@@ -117,7 +164,7 @@
     const m = document.querySelector('meta[name="theme-color"]');
     if (m) m.setAttribute("content", THEME_COLOR[theme]);
     try {
-      localStorage.setItem(KEY_THEME, theme);
+      localStorage.setItem(KEYS.theme, theme);
     } catch {
       /* tema vale só nesta visita */
     }
@@ -128,14 +175,13 @@
     const e = String(email).trim().toLowerCase();
     const acc = CFG.testAccounts.find((a) => a.email.toLowerCase() === e && a.password === password);
     if (!acc) return false;
-    save(KEY_SESSION, { email: acc.email, role: acc.role, name: acc.name });
-    // Preenche o perfil com o nome da conta, se ainda não houver
-    if (!getProfile()) save(KEY_PROFILE, { name: acc.name, nickname: "", phone: "" });
+    save(KEYS.session, { email: acc.email, role: acc.role, name: acc.name });
+    if (!getProfile()) save(KEYS.profile, { name: acc.name, nickname: "", phone: "" });
     return true;
   }
   function logout() {
     try {
-      localStorage.removeItem(KEY_SESSION);
+      localStorage.removeItem(KEYS.session);
     } catch {
       /* ignora */
     }
@@ -144,14 +190,15 @@
     toast("Você saiu da conta");
   }
 
-  // ---------- regras de horário (mesmas regras do schedule.ts do projeto Lovable) ----------
+  // ---------- horários e calendário ----------
   function buildSlots({ date, durationMin, barberId }) {
-    if (!isOpenDay(date)) return [];
+    if (!isDayOpen(date)) return [];
+    const h = hours();
     const [y, m, d] = date.split("-").map(Number);
     const now = Date.now();
     const bookings = getBookings().filter((b) => b.status === "confirmado");
     const slots = [];
-    for (let min = H.openMin; min + durationMin <= H.closeMin; min += H.slotStepMin) {
+    for (let min = h.openMin; min + durationMin <= h.closeMin; min += h.slotStepMin) {
       const start = new Date(y, m - 1, d, Math.floor(min / 60), min % 60);
       const end = new Date(start.getTime() + durationMin * 60000);
       const taken = bookings.some(
@@ -170,14 +217,34 @@
     return slots;
   }
 
-  function openDays() {
-    const today = toKey(new Date());
-    const days = [];
-    for (let i = 0; i <= H.daysAhead; i++) {
-      const k = addDaysKey(today, i);
-      if (isOpenDay(k)) days.push(k);
+  // Monta um calendário mensal. cell(k) devolve {cls, disabled, dot}.
+  function calendarHtml({ month, selected, nav, cell }) {
+    const [y, m] = month.split("-").map(Number);
+    const first = new Date(y, m - 1, 1).getDay();
+    const total = new Date(y, m, 0).getDate();
+    let cells = "";
+    for (let i = 0; i < first; i++) cells += "<span></span>";
+    for (let d = 1; d <= total; d++) {
+      const k = `${y}-${pad(m)}-${pad(d)}`;
+      const c = cell(k);
+      cells += `<button type="button" class="cal-day ${c.cls || ""} ${k === selected ? "sel" : ""}" data-cal="${k}" ${
+        c.disabled ? "disabled" : ""
+      } aria-label="${k}" ${k === selected ? 'aria-pressed="true"' : ""}>${d}${c.dot ? '<span class="dot"></span>' : ""}</button>`;
     }
-    return days;
+    return `
+      <div class="cal">
+        <div class="cal-top">
+          <button type="button" class="cal-nav" data-calnav="-1" aria-label="Mês anterior" ${nav.prevDisabled ? "disabled" : ""}>‹</button>
+          <strong>${esc(monthTitle(month))}</strong>
+          <button type="button" class="cal-nav" data-calnav="1" aria-label="Próximo mês" ${nav.nextDisabled ? "disabled" : ""}>›</button>
+        </div>
+        <div class="cal-week">${WEEKDAY_NAMES.map((w) => `<span>${w.charAt(0)}</span>`).join("")}</div>
+        <div class="cal-grid">${cells}</div>
+      </div>`;
+  }
+  function bindCal(onPick, onNav) {
+    app.querySelectorAll("[data-cal]").forEach((el) => el.addEventListener("click", () => onPick(el.dataset.cal)));
+    app.querySelectorAll("[data-calnav]").forEach((el) => el.addEventListener("click", () => onNav(Number(el.dataset.calnav))));
   }
 
   // ---------- topo e menu ----------
@@ -195,13 +262,13 @@
       acc.setAttribute("aria-label", "Entrar");
       acc.href = "#/entrar";
     }
-    document.getElementById("menu-admin").hidden = !isAdmin();
     document.getElementById("menu-logout").hidden = !s;
     document.getElementById("menu-login").hidden = !!s;
-    document.getElementById("menu-contact").href = "#/fale-conosco";
+    const navAdmin = document.getElementById("nav-admin");
+    navAdmin.hidden = !isAdmin();
+    navAdmin.style.display = isAdmin() ? "" : "none";
   }
 
-  // Bolinha no botão do menu e contador de avisos não lidos da conta logada.
   function renderBadges() {
     const unread = myNotifs().filter((n) => !n.read_at).length;
     const badge = document.getElementById("menu-badge");
@@ -215,10 +282,12 @@
     );
   }
 
-  // ---------- páginas ----------
+  // ---------- páginas do cliente ----------
   function renderHome() {
     const s = getSession();
     const first = s?.name?.split(" ")[0];
+    const smallIcon = (name) =>
+      icon(name).replace("<svg", '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"');
     app.innerHTML = `
       <section class="hero">
         ${photo("hero")}
@@ -226,8 +295,8 @@
           <p class="hero-kicker">Barbearia</p>
           <h1 class="hero-title">${esc(CFG.shopName)}</h1>
           <div class="hero-meta">
-            <span>${icon("clock").replace("<svg", '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"')} ${esc(H.label)}</span>
-            <span>${icon("pin").replace("<svg", '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"')} Atendimento com hora marcada</span>
+            <span>${smallIcon("clock")} ${esc(hoursLabel())}</span>
+            <span>${smallIcon("pin")} Atendimento com hora marcada</span>
           </div>
         </div>
       </section>
@@ -260,17 +329,6 @@
             <span class="arrow-circle">›</span>
           </span>
         </a>
-        ${
-          isAdmin()
-            ? `<a class="photo-card mirrored" href="#/painel" style="animation-delay:240ms">
-                 ${photo("hero")}
-                 <span class="content">
-                   <span><strong>Painel do barbeiro</strong><span class="desc">Gerencie a agenda do dia</span></span>
-                   <span class="arrow-circle">›</span>
-                 </span>
-               </a>`
-            : ""
-        }
       </div>
     `;
   }
@@ -293,7 +351,7 @@
     app.innerHTML = `
       ${pageHead("Serviços", "Preços e duração de cada atendimento", "classico")}
       <ul class="list" style="margin-top:1.25rem">
-        ${CFG.services
+        ${services()
           .map(
             (s) => `
           <li class="card service-row">
@@ -315,16 +373,34 @@
   const booking = {
     serviceId: CFG.services[0].id,
     barberId: CFG.barbers[0].id,
-    date: openDays()[0],
+    date: null,
+    month: null,
     time: null,
   };
 
+  function firstBookableDay() {
+    const today = toKey(new Date());
+    for (let i = 0; i <= hours().daysAhead; i++) {
+      const k = addDaysKey(today, i);
+      if (isDayOpen(k)) return k;
+    }
+    return today;
+  }
+
   function renderAgendar() {
     const profile = getProfile();
-    const days = openDays();
-    if (!days.includes(booking.date)) booking.date = days[0];
+    const today = toKey(new Date());
+    const end = addDaysKey(today, hours().daysAhead);
+    if (!booking.date || booking.date < today || booking.date > end || !isDayOpen(booking.date)) {
+      booking.date = firstBookableDay();
+      booking.time = null;
+      booking.month = monthOf(booking.date);
+    }
+    const minMonth = monthOf(today);
+    const maxMonth = monthOf(end);
+    if (!booking.month || booking.month < minMonth) booking.month = minMonth;
 
-    const service = CFG.services.find((s) => s.id === booking.serviceId);
+    const service = serviceById(booking.serviceId);
     const slots = buildSlots({ date: booking.date, durationMin: service.durationMin, barberId: booking.barberId });
     const free = slots.filter((s) => s.available);
     if (booking.time && !free.some((s) => s.time === booking.time)) booking.time = null;
@@ -334,7 +410,7 @@
 
       <h3 class="section-title">Serviço</h3>
       <div class="chips">
-        ${CFG.services
+        ${services()
           .map(
             (s) => `
           <button class="chip ${s.id === booking.serviceId ? "on" : ""}" data-service="${esc(s.id)}">
@@ -353,21 +429,17 @@
       </div>
 
       <h3 class="section-title">Dia</h3>
-      <div class="scroller">
-        ${days
-          .map((k) => {
-            const d = fromKey(k);
-            const wd = new Intl.DateTimeFormat("pt-BR", { weekday: "short" }).format(d).replace(".", "");
-            const mo = new Intl.DateTimeFormat("pt-BR", { month: "short" }).format(d).replace(".", "");
-            return `
-            <button class="chip day-chip ${k === booking.date ? "on" : ""}" data-day="${k}">
-              <div class="wd">${esc(wd)}</div>
-              <div class="dn">${pad(d.getDate())}</div>
-              <div class="mo">${esc(mo)}</div>
-            </button>`;
-          })
-          .join("")}
-      </div>
+      ${calendarHtml({
+        month: booking.month,
+        selected: booking.date,
+        nav: { prevDisabled: booking.month <= minMonth, nextDisabled: booking.month >= maxMonth },
+        cell: (k) => {
+          if (k < today || k > end) return { disabled: true, cls: "out" };
+          if (!isDayOpen(k)) return { disabled: true, cls: "off" };
+          return { cls: k === today ? "today" : "" };
+        },
+      })}
+      <p class="cal-legend"><span><i class="lg lg-open"></i>Aberto</span><span><i class="lg lg-off"></i>Fechado</span></p>
 
       <h3 class="section-title">Horário <span class="sub">${esc(fmtLong(fromKey(booking.date)))}</span></h3>
       ${
@@ -410,12 +482,17 @@
         renderAgendar();
       }),
     );
-    app.querySelectorAll("[data-day]").forEach((el) =>
-      el.addEventListener("click", () => {
-        booking.date = el.dataset.day;
+    bindCal(
+      (k) => {
+        booking.date = k;
+        booking.month = monthOf(k);
         booking.time = null;
         renderAgendar();
-      }),
+      },
+      (n) => {
+        booking.month = shiftMonth(booking.month, n);
+        renderAgendar();
+      },
     );
     app.querySelectorAll("[data-time]").forEach((el) =>
       el.addEventListener("click", () => {
@@ -440,6 +517,7 @@
 
     if (!name) return toast("Informe seu nome");
     if (!isValidWhatsApp(phone)) return toast("Informe seu WhatsApp com DDD");
+    if (!isDayOpen(booking.date)) return toast("Este dia não está mais aberto para agendamento");
 
     const slot = slots.find((s) => s.time === booking.time);
     if (!slot) return toast("Esse horário não está mais disponível");
@@ -447,12 +525,12 @@
       return toast("Esse horário acabou de ser reservado. Escolha outro.");
     }
 
-    save(KEY_PROFILE, { name, nickname, phone: digits(phone) });
+    save(KEYS.profile, { name, nickname, phone: digits(phone) });
     const barber = CFG.barbers.find((b) => b.id === booking.barberId);
     setBookings([
       ...getBookings(),
       {
-        id: (crypto && crypto.randomUUID && crypto.randomUUID()) || String(Date.now()),
+        id: uid(),
         client_email: session.email,
         client_name: name,
         client_nickname: nickname || null,
@@ -477,7 +555,6 @@
   function renderMeus() {
     const session = getSession();
     const now = Date.now();
-    // Cada conta vê só os próprios horários
     const all = getBookings()
       .filter((b) => b.client_email === session.email)
       .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
@@ -528,7 +605,6 @@
     app.querySelectorAll("[data-cancel]").forEach((el) =>
       el.addEventListener("click", () => {
         if (!window.confirm("Cancelar este horário?")) return;
-        // Cliente cancela só o próprio horário futuro (mesma regra do Lovable)
         setBookings(getBookings().map((b) => (b.id === el.dataset.cancel ? { ...b, status: "cancelado" } : b)));
         toast("Agendamento cancelado");
         renderMeus();
@@ -566,7 +642,6 @@
       </div>
     `;
 
-    // Abriu a tela: marca os avisos desta conta como lidos.
     const now = new Date().toISOString();
     const session = getSession();
     const all = getAllNotifs();
@@ -584,34 +659,51 @@
   }
 
   // ---------- Painel do barbeiro (só conta admin) ----------
-  const painelState = { date: toKey(new Date()) };
+  const painel = {
+    tab: "agenda",
+    date: toKey(new Date()),
+    month: monthOf(toKey(new Date())),
+    draft: null, // horários em edição, antes de salvar
+  };
 
-  function renderPainel() {
-    const day = painelState.date;
+  const activeCount = (k) =>
+    getBookings().filter((b) => b.status === "confirmado" && toKey(new Date(b.starts_at)) === k).length;
+
+  function painelAgenda() {
+    const day = painel.date;
     const dayBookings = getBookings()
       .filter((b) => toKey(new Date(b.starts_at)) === day)
       .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
     const active = dayBookings.filter((b) => b.status !== "cancelado");
     const revenue = active.filter((b) => b.status !== "faltou").reduce((sum, b) => sum + b.price_cents, 0);
-    const days = Array.from({ length: 14 }, (_, i) => addDaysKey(toKey(new Date()), i));
+    const closed = closedDates().includes(day);
+    const weekOn = isWeekdayOn(day);
 
-    app.innerHTML = `
-      ${pageHead("Painel do barbeiro", "Agenda de toda a barbearia", "hero")}
+    let action;
+    if (!weekOn) {
+      action = `<p class="hint">Este dia da semana está fora do horário de atendimento. Para abrir, marque o dia em Horários.</p>`;
+    } else if (closed) {
+      action = `<button class="btn-gold" id="day-toggle">Abrir este dia para agendamento</button>`;
+    } else {
+      action = `<button class="btn-soft danger" id="day-toggle">Fechar este dia para agendamento</button>
+                <p class="hint">Fechar não cancela os horários já marcados. Cancele-os na lista abaixo se precisar.</p>`;
+    }
 
-      <h3 class="section-title">Dia</h3>
-      <div class="scroller">
-        ${days
-          .map((k) => {
-            const d = fromKey(k);
-            const wd = new Intl.DateTimeFormat("pt-BR", { weekday: "short" }).format(d).replace(".", "");
-            return `<button class="chip day-chip ${k === day ? "on" : ""}" data-pday="${k}">
-              <div class="wd">${esc(wd)}</div><div class="dn">${pad(d.getDate())}</div>
-            </button>`;
-          })
-          .join("")}
-      </div>
+    return `
+      ${calendarHtml({
+        month: painel.month,
+        selected: day,
+        nav: { prevDisabled: false, nextDisabled: false },
+        cell: (k) => {
+          const isClosed = closedDates().includes(k);
+          const off = !isWeekdayOn(k);
+          return { cls: isClosed ? "closed" : off ? "off" : "", dot: activeCount(k) > 0 };
+        },
+      })}
+      <p class="cal-legend"><span><i class="lg lg-open"></i>Aberto</span><span><i class="lg lg-off"></i>Fechado</span><span><i class="lg lg-closed"></i>Fechado por você</span></p>
 
-      <div class="chip-row" style="margin-top:1rem">
+      <h3 class="section-title">${esc(fmtLong(fromKey(day)))} ${closed ? '<span class="sub">· fechado</span>' : ""}</h3>
+      <div class="chip-row">
         <div class="card" style="padding:0.9rem;text-align:center">
           <p style="margin:0;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted-foreground)">Agendamentos</p>
           <p class="price" style="margin-top:0.25rem">${active.length}</p>
@@ -621,6 +713,7 @@
           <p class="price" style="margin-top:0.25rem">${brl(revenue)}</p>
         </div>
       </div>
+      <div style="margin-top:0.9rem">${action}</div>
 
       <h3 class="section-title">Atendimentos</h3>
       ${
@@ -629,7 +722,9 @@
           : `<ul class="list">
               ${dayBookings
                 .map((b) => {
-                  const who = b.client_nickname ? `${esc(b.client_nickname)} <span class="muted">· ${esc(b.client_name)}</span>` : esc(b.client_name);
+                  const who = b.client_nickname
+                    ? `${esc(b.client_nickname)} <span class="muted">· ${esc(b.client_name)}</span>`
+                    : esc(b.client_name);
                   const open = b.status === "confirmado";
                   return `
                   <li class="card booking" style="${open ? "" : "opacity:0.75"}">
@@ -652,28 +747,126 @@
             </ul>`
       }
     `;
+  }
 
-    app.querySelectorAll("[data-pday]").forEach((el) =>
+  function painelHorarios() {
+    const d = painel.draft ?? { weekdays: [...hours().weekdays], openMin: hours().openMin, closeMin: hours().closeMin };
+    painel.draft = d;
+    const times = [];
+    for (let m = 360; m <= 1320; m += 30) times.push(m);
+    const opts = (sel) => times.map((m) => `<option value="${m}" ${m === sel ? "selected" : ""}>${minToTime(m)}</option>`).join("");
+    return `
+      <h3 class="section-title">Dias de atendimento</h3>
+      <div class="chip-row">
+        ${WEEKDAY_NAMES.map(
+          (n, i) =>
+            `<button type="button" class="chip ${d.weekdays.includes(i) ? "on" : ""}" data-wd="${i}" aria-pressed="${d.weekdays.includes(i)}">${n}</button>`,
+        ).join("")}
+      </div>
+
+      <h3 class="section-title">Horário</h3>
+      <div class="chip-row">
+        <label class="hint" style="display:grid;gap:0.35rem">Abre às
+          <select class="field" id="h-open">${opts(d.openMin)}</select>
+        </label>
+        <label class="hint" style="display:grid;gap:0.35rem">Fecha às
+          <select class="field" id="h-close">${opts(d.closeMin)}</select>
+        </label>
+      </div>
+
+      <p class="hint">Prévia para o cliente: ${esc(labelFrom(d))}</p>
+      <button class="btn-gold" id="save-hours">Salvar horários</button>
+      <p class="hint">Vale para o agendamento dos clientes. Os horários já marcados não mudam. Para fechar um dia específico, use a Agenda.</p>
+    `;
+  }
+
+  function painelServicos() {
+    return `
+      <h3 class="section-title">Valores dos serviços</h3>
+      <p class="hint">Estes são os valores que o cliente vê em Serviços e no agendamento.</p>
+      <ul class="list">
+        ${services()
+          .map(
+            (s) => `
+          <li class="card service-row">
+            <div>
+              <h3>${esc(s.name)}</h3>
+              <p>${durLabel(s.durationMin)}</p>
+            </div>
+            <input class="field" style="max-width:8rem;text-align:right" inputmode="decimal"
+              data-price="${esc(s.id)}" value="${esc(centsToInput(s.priceCents))}" aria-label="Preço de ${esc(s.name)} em reais" />
+          </li>`,
+          )
+          .join("")}
+      </ul>
+      <button class="btn-gold" id="save-prices">Salvar valores</button>
+    `;
+  }
+
+  function renderPainel() {
+    const tabs = [
+      ["agenda", "Agenda"],
+      ["horarios", "Horários"],
+      ["servicos", "Serviços"],
+    ];
+    const body = painel.tab === "horarios" ? painelHorarios() : painel.tab === "servicos" ? painelServicos() : painelAgenda();
+    app.innerHTML = `
+      ${pageHead("Painel do barbeiro", "Agenda, dias e horários, e valores dos serviços", "hero")}
+      <div class="tabs" role="tablist" style="margin-top:1.25rem">
+        ${tabs
+          .map(([k, l]) => `<button role="tab" aria-selected="${painel.tab === k}" class="${painel.tab === k ? "on" : ""}" data-ptab="${k}">${l}</button>`)
+          .join("")}
+      </div>
+      <div style="margin-top:0.5rem">${body}</div>
+    `;
+    bindPainel();
+  }
+
+  function bindPainel() {
+    app.querySelectorAll("[data-ptab]").forEach((el) =>
       el.addEventListener("click", () => {
-        painelState.date = el.dataset.pday;
+        painel.tab = el.dataset.ptab;
+        painel.draft = null;
         renderPainel();
       }),
     );
+
+    bindCal(
+      (k) => {
+        painel.date = k;
+        painel.month = monthOf(k);
+        renderPainel();
+      },
+      (n) => {
+        painel.month = shiftMonth(painel.month, n);
+        renderPainel();
+      },
+    );
+
+    const dayToggle = document.getElementById("day-toggle");
+    if (dayToggle) {
+      dayToggle.addEventListener("click", () => {
+        const list = closedDates();
+        const closing = !list.includes(painel.date);
+        saveOvr({ closedDates: closing ? [...list, painel.date] : list.filter((x) => x !== painel.date) });
+        toast(closing ? "Dia fechado para agendamento" : "Dia aberto para agendamento");
+        renderPainel();
+      });
+    }
+
     app.querySelectorAll("[data-status]").forEach((el) =>
       el.addEventListener("click", () => {
         const status = el.dataset.status;
         const id = el.dataset.id;
         if (status === "cancelado" && !window.confirm("Cancelar este agendamento? O cliente recebe um aviso.")) return;
-        const bookings = getBookings();
-        const b = bookings.find((x) => x.id === id);
+        const b = getBookings().find((x) => x.id === id);
         if (!b) return;
-        setBookings(bookings.map((x) => (x.id === id ? { ...x, status } : x)));
+        setBookings(getBookings().map((x) => (x.id === id ? { ...x, status } : x)));
         if (status === "cancelado") {
-          // Aviso para o cliente, como o trigger notify_booking_change do Lovable
           setAllNotifs([
             ...getAllNotifs(),
             {
-              id: (crypto && crypto.randomUUID && crypto.randomUUID()) || String(Date.now()),
+              id: uid(),
               to: b.client_email,
               kind: "cancelado",
               title: "Seu horário foi cancelado",
@@ -689,6 +882,50 @@
         renderPainel();
       }),
     );
+
+    // Horários: edição em rascunho até "Salvar"
+    app.querySelectorAll("[data-wd]").forEach((el) =>
+      el.addEventListener("click", () => {
+        const i = Number(el.dataset.wd);
+        const d = painel.draft;
+        d.weekdays = d.weekdays.includes(i) ? d.weekdays.filter((x) => x !== i) : [...d.weekdays, i].sort((a, b) => a - b);
+        renderPainel();
+      }),
+    );
+    const openSel = document.getElementById("h-open");
+    const closeSel = document.getElementById("h-close");
+    if (openSel) openSel.addEventListener("change", () => (painel.draft.openMin = Number(openSel.value)) && renderPainel());
+    if (closeSel) closeSel.addEventListener("change", () => (painel.draft.closeMin = Number(closeSel.value)) && renderPainel());
+
+    const saveHours = document.getElementById("save-hours");
+    if (saveHours) {
+      saveHours.addEventListener("click", () => {
+        const d = painel.draft;
+        if (d.weekdays.length === 0) return toast("Escolha pelo menos um dia de atendimento");
+        if (d.closeMin - d.openMin < 60) return toast("O fechamento precisa ser pelo menos 1 hora depois da abertura");
+        saveOvr({ hours: { weekdays: d.weekdays, openMin: d.openMin, closeMin: d.closeMin } });
+        painel.draft = null;
+        toast("Horários salvos");
+        renderPainel();
+      });
+    }
+
+    // Valores: lê "45,00" (reais, vírgula) ou "45.00"
+    const savePrices = document.getElementById("save-prices");
+    if (savePrices) {
+      savePrices.addEventListener("click", () => {
+        const map = {};
+        for (const el of app.querySelectorAll("[data-price]")) {
+          const raw = el.value.trim();
+          const n = raw.includes(",") ? Number(raw.replace(/\./g, "").replace(",", ".")) : Number(raw);
+          if (!Number.isFinite(n) || n < 0) return toast(`Valor inválido para ${el.getAttribute("aria-label")}`);
+          map[el.dataset.price] = Math.round(n * 100);
+        }
+        saveOvr({ prices: map });
+        toast("Valores salvos. O cliente já vê os novos preços.");
+        renderPainel();
+      });
+    }
   }
 
   function renderAcessoNegado() {
@@ -830,13 +1067,14 @@
 
       <ul class="list" style="margin-top:1.5rem">
         ${about.highlights
-          .map(
-            (h) => `
+          .map((h) => {
+            const text = h.icon === "clock" ? hoursLabel() : h.text;
+            return `
           <li class="highlight">
             <span class="ico">${icon(h.icon)}</span>
-            <span><strong>${esc(h.title)}</strong><span>${esc(h.text)}</span></span>
-          </li>`,
-          )
+            <span><strong>${esc(h.title)}</strong><span>${esc(text)}</span></span>
+          </li>`;
+          })
           .join("")}
       </ul>
 
@@ -867,7 +1105,7 @@
         ${row("message", "WhatsApp", waLink ? c.whatsappLabel : null, waLink)}
         ${row("instagram", "Instagram", c.instagram ? `@${c.instagram}` : null, c.instagram ? `https://instagram.com/${c.instagram}` : null)}
         ${row("pin", "Endereço", c.address, c.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.address)}` : null)}
-        ${row("clock", "Horário", H.label, null)}
+        ${row("clock", "Horário", hoursLabel(), null)}
       </ul>
 
       ${waLink ? `<a class="btn-gold" href="${esc(waLink)}" target="_blank" rel="noopener noreferrer">${icon("message").replace("<svg", '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"')} Chamar no WhatsApp</a>` : ""}
@@ -913,7 +1151,6 @@
     entrar: renderEntrar,
     painel: renderPainel,
   };
-  // Telas que exigem conta (como as rotas _authenticated do Lovable)
   const NEEDS_LOGIN = ["agendar", "meus-agendamentos", "notificacoes", "painel"];
 
   function route() {
@@ -922,7 +1159,6 @@
     const key = known ? path : "";
     const session = getSession();
 
-    // Sem conta: manda para entrar, guardando a tela pedida
     if (known && NEEDS_LOGIN.includes(key) && !session) {
       sessionStorage.setItem("after-login", `#/${key}`);
       toast("Entre na sua conta para continuar");
@@ -947,9 +1183,8 @@
     window.scrollTo(0, 0);
   }
 
-  // Tema salvo é aplicado também ao carregar (o script do head já faz isso; aqui sincronizamos a meta).
   try {
-    const saved = localStorage.getItem(KEY_THEME);
+    const saved = localStorage.getItem(KEYS.theme);
     if (saved) setTheme(saved);
   } catch {
     /* ignora */

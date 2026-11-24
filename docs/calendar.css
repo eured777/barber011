@@ -1,0 +1,132 @@
+/* Calendário mensal (agendamento e painel do barbeiro). Usa os mesmos tokens do styles.css. */
+.cal {
+  margin-top: 0.5rem;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  border-radius: 1.25rem;
+  background: var(--card, rgba(255, 255, 255, 0.03));
+  padding: 0.9rem;
+}
+.cal-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.7rem;
+}
+.cal-top strong {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--foreground, inherit);
+}
+.cal-nav {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  background: transparent;
+  color: var(--foreground, inherit);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.cal-nav:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.cal-week,
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.3rem;
+  text-align: center;
+}
+.cal-week span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--muted-foreground, #9a9488);
+  padding: 0.2rem 0;
+}
+.cal-grid > span {
+  min-height: 0;
+}
+.cal-day {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--foreground, inherit);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cal-day:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+.cal-day.today {
+  border-color: var(--primary, #d4a24c);
+}
+.cal-day.off {
+  color: var(--muted-foreground, #9a9488);
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+.cal-day.closed {
+  color: #e5484d;
+  text-decoration: line-through;
+}
+.cal-day.sel {
+  background: var(--gradient-gold, var(--primary, #d4a24c));
+  color: #141210;
+  border-color: transparent;
+  text-decoration: none;
+}
+.cal-day .dot {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--primary, #d4a24c);
+}
+.cal-day.sel .dot {
+  background: #141210;
+}
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  margin: 0.7rem 0 0;
+  font-size: 0.72rem;
+  color: var(--muted-foreground, #9a9488);
+}
+.cal-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.lg {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 0.2rem;
+}
+.lg-open {
+  background: var(--primary, #d4a24c);
+}
+.lg-off {
+  background: var(--muted-foreground, #9a9488);
+  opacity: 0.55;
+}
+.lg-closed {
+  background: #e5484d;
+}
