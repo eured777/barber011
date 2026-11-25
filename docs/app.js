@@ -452,6 +452,7 @@
     app.innerHTML = `
       ${pageHead("Agendar", "Monte seu horário em poucos toques", "fade")}
 
+      <div class="split"><div class="col">
       <h3 class="section-title">Serviço</h3>
       <div class="chips">
         ${services()
@@ -472,6 +473,7 @@
           .join("")}
       </div>
 
+      </div><div class="col">
       <h3 class="section-title">Dia</h3>
       ${calendarHtml({
         month: booking.month,
@@ -510,6 +512,7 @@
       <button class="btn-gold" id="confirm" ${booking.time ? "" : "disabled"}>
         ${booking.time ? `Confirmar · ${booking.time} · ${brl(service.priceCents)}` : "Escolha um horário"}
       </button>
+      </div></div>
     `;
 
     app.querySelectorAll("[data-service]").forEach((el) =>
@@ -735,6 +738,7 @@
     }
 
     return `
+      <div class="split"><div class="col">
       ${calendarHtml({
         month: painel.month,
         selected: day,
@@ -747,6 +751,7 @@
       })}
       <p class="cal-legend"><span><i class="lg lg-open"></i>Aberto</span><span><i class="lg lg-off"></i>Fechado</span><span><i class="lg lg-closed"></i>Fechado por você</span></p>
 
+      </div><div class="col">
       <h3 class="section-title">${esc(fmtLong(fromKey(day)))} ${closed ? '<span class="sub">· fechado</span>' : ""}</h3>
       <div class="chip-row">
         <div class="card" style="padding:0.9rem;text-align:center">
@@ -791,6 +796,7 @@
                 .join("")}
             </ul>`
       }
+      </div></div>
     `;
   }
 

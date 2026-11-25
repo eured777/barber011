@@ -1,0 +1,63 @@
+/*
+ * Responsivo: celular (padrão), tablet (a partir de 640px) e computador (a partir de 1024px).
+ * Só ajusta larguras e grades; a ordem do conteúdo continua a mesma no celular.
+ */
+
+/* Cartão de título cresce com o texto (evita cortar subtítulo longo no celular). */
+.photo-head {
+  height: auto;
+  min-height: 11rem;
+}
+
+/* Abas com três opções (Painel) ocupam a linha inteira; com duas (Entrar) continua igual. */
+.tabs:has(> :nth-child(3)) {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* Colunas usadas em Agendar e no Painel. No celular ficam uma embaixo da outra. */
+.split {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+.split > .col {
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .topbar,
+  .page,
+  .bottom-nav ul {
+    max-width: 40rem;
+  }
+  .menu-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+  .list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 1024px) {
+  .topbar,
+  .page,
+  .bottom-nav ul {
+    max-width: 64rem;
+  }
+  .split {
+    grid-template-columns: 1fr 1fr;
+    gap: 2.5rem;
+    align-items: start;
+  }
+  .menu-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .list {
+    grid-template-columns: 1fr 1fr;
+  }
+  .cal {
+    padding: 1.25rem;
+  }
+  .cal-day {
+    font-size: 1rem;
+  }
+}
