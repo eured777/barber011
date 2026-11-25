@@ -13,6 +13,9 @@
 .tabs:has(> :nth-child(3)) {
   grid-template-columns: repeat(3, 1fr);
 }
+.tabs:has(> :nth-child(4)) {
+  grid-template-columns: repeat(4, 1fr);
+}
 
 /* Colunas usadas em Agendar e no Painel. No celular ficam uma embaixo da outra. */
 .split {

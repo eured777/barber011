@@ -16,7 +16,9 @@
     theme: "rdc-theme",
     config: "rdc-config",
     font: "rdc-font",
+    gallery: "rdc-gallery",
   };
+  const GALLERY_SLOTS = 6;
   const FONT_SIZES = [
     { id: "sm", label: "Pequeno", preview: "14px" },
     { id: "md", label: "Médio", preview: "18px" },
@@ -164,6 +166,96 @@
 
   // Contato: o que o admin altera em Fale conosco sobrepõe config.js
   const contact = () => ({ ...CFG.contact, ...(ovr().contact ?? {}) });
+
+  // Galeria de cortes: 6 espaços, cada um com uma foto (data URL) ou vazio
+  function getGallery() {
+    const arr = load(KEYS.gallery, []);
+    return Array.from({ length: GALLERY_SLOTS }, (_, i) => arr[i] ?? null);
+  }
+  function setGallery(g) {
+    try {
+      localStorage.setItem(KEYS.gallery, JSON.stringify(g));
+      return true;
+    } catch {
+      toast("Sem espaço neste navegador para mais fotos. Remova alguma ou use fotos menores.");
+      return false;
+    }
+  }
+  // Recorta a foto em quadrado de 600px e comprime, para caber no navegador
+  function compressImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width - side) / 2;
+        const sy = (img.height - side) / 2;
+        const c = document.createElement("canvas");
+        c.width = 600;
+        c.height = 600;
+        c.getContext("2d").drawImage(img, sx, sy, side, side, 0, 0, 600, 600);
+        URL.revokeObjectURL(url);
+        resolve(c.toDataURL("image/jpeg", 0.82));
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("não é imagem"));
+      };
+      img.src = url;
+    });
+  }
+  function galleryBlock() {
+    const g = getGallery();
+    if (!isAdmin() && g.every((x) => !x)) return "";
+    return `
+      <h3 class="section-title">Cortes</h3>
+      <div class="gallery" aria-label="Galeria de cortes">
+        ${g
+          .map((src, i) =>
+            src
+              ? `<button type="button" class="gal-item" data-view="${i}" aria-label="Ver corte ${i + 1}"><img src="${src}" alt="Corte ${i + 1}" loading="lazy" /></button>`
+              : isAdmin()
+                ? `<a class="gal-item empty" href="#/painel" data-gal-go aria-label="Adicionar foto ${i + 1}">+</a>`
+                : "",
+          )
+          .join("")}
+      </div>`;
+  }
+  function openLightbox(src) {
+    const box = document.createElement("div");
+    box.className = "lightbox";
+    box.innerHTML = `<button type="button" class="lightbox-close" aria-label="Fechar">✕</button><img src="${src}" alt="Corte" />`;
+    const close = () => {
+      box.remove();
+      document.removeEventListener("keydown", onKey);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") close();
+    };
+    box.addEventListener("click", (e) => {
+      if (e.target.tagName !== "IMG") close();
+    });
+    document.addEventListener("keydown", onKey);
+    document.body.appendChild(box);
+  }
+  function painelGaleria() {
+    const g = getGallery();
+    return `
+      <h3 class="section-title">Fotos dos cortes</h3>
+      <p class="hint">Até ${GALLERY_SLOTS} fotos. Elas aparecem na tela inicial, em quadrados, para todos os clientes.</p>
+      <div class="gal-admin">
+        ${g
+          .map(
+            (src, i) => `
+          <div class="gal-cell">
+            <div class="gal-item ${src ? "" : "empty"}">${src ? `<img src="${src}" alt="Corte ${i + 1}" />` : "<span>Vazio</span>"}</div>
+            <label class="btn-soft gal-btn">${src ? "Trocar foto" : "Adicionar foto"}<input type="file" accept="image/*" data-gal="${i}" hidden /></label>
+            ${src ? `<button type="button" class="btn-soft danger gal-btn" data-gal-del="${i}">Remover</button>` : ""}
+          </div>`,
+          )
+          .join("")}
+      </div>`;
+  }
 
   // Tamanho da letra (vale neste aparelho)
   function currentFont() {
@@ -374,7 +466,20 @@
           </span>
         </a>
       </div>
+      ${galleryBlock()}
     `;
+    bindHome();
+  }
+
+  function bindHome() {
+    app.querySelectorAll("[data-view]").forEach((el) =>
+      el.addEventListener("click", () => openLightbox(getGallery()[Number(el.dataset.view)])),
+    );
+    app.querySelectorAll("[data-gal-go]").forEach((el) =>
+      el.addEventListener("click", () => {
+        painel.tab = "galeria";
+      }),
+    );
   }
 
   function pageHead(title, subtitle, imageKey) {
@@ -891,8 +996,16 @@
       ["agenda", "Agenda"],
       ["horarios", "Horários"],
       ["servicos", "Serviços"],
+      ["galeria", "Galeria"],
     ];
-    const body = painel.tab === "horarios" ? painelHorarios() : painel.tab === "servicos" ? painelServicos() : painelAgenda();
+    const body =
+      painel.tab === "horarios"
+        ? painelHorarios()
+        : painel.tab === "servicos"
+          ? painelServicos()
+          : painel.tab === "galeria"
+            ? painelGaleria()
+            : painelAgenda();
     app.innerHTML = `
       ${pageHead("Painel do barbeiro", "Agenda, dias e horários, e valores dos serviços", "hero")}
       <div class="tabs" role="tablist" style="margin-top:1.25rem">
@@ -992,6 +1105,33 @@
         renderPainel();
       });
     }
+
+    // Galeria: adicionar/trocar foto (recortada em quadrado) e remover
+    app.querySelectorAll("[data-gal]").forEach((el) =>
+      el.addEventListener("change", async () => {
+        const file = el.files[0];
+        if (!file) return;
+        try {
+          const data = await compressImage(file);
+          const g = getGallery();
+          g[Number(el.dataset.gal)] = data;
+          if (setGallery(g)) {
+            toast("Foto salva");
+            renderPainel();
+          }
+        } catch {
+          toast("Não consegui usar esse arquivo. Escolha uma imagem.");
+        }
+      }),
+    );
+    app.querySelectorAll("[data-gal-del]").forEach((el) =>
+      el.addEventListener("click", () => {
+        const g = getGallery();
+        g[Number(el.dataset.galDel)] = null;
+        if (setGallery(g)) toast("Foto removida");
+        renderPainel();
+      }),
+    );
 
     // Serviços: lápis (nome ou tempo) abre a mesma edição; "+ Adicionar" abre um serviço novo
     app.querySelectorAll("[data-edit]").forEach((el) =>
